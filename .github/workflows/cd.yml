@@ -34,7 +34,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -48,7 +48,7 @@ jobs:
         run: echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Build & push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: services/course-service
           push: true
