@@ -1,0 +1,77 @@
+name: CD — build, push & bump manifest
+
+# Chạy khi code service hoặc chart thay đổi trên main.
+# Build image -> push ECR -> cập nhật image tag trong Git -> ArgoCD tự deploy.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/course-service/**"
+      - "charts/course-service/**"
+      - ".github/workflows/cd.yml"
+
+# OIDC: id-token để assume IAM role; contents:write để commit bump tag.
+permissions:
+  id-token: write
+  contents: write
+
+concurrency:
+  group: cd-course-service
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REPO: eduvn/course-service
+
+jobs:
+  build-push:
+    name: Build & push image, bump manifest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Cần token push lại commit bump tag
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tag
+        id: meta
+        run: echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: services/course-service
+          push: true
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ steps.meta.outputs.tag }}
+            ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:latest
+
+      - name: Bump image in Helm values
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          yq -i '.image.repository = strenv(REGISTRY) + "/" + strenv(ECR_REPO)' charts/course-service/values.yaml
+          yq -i '.image.tag = strenv(TAG)' charts/course-service/values.yaml
+
+      - name: Commit & push manifest bump
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "No manifest change"; exit 0
+          fi
+          git add charts/course-service/values.yaml
+          git commit -m "ci: bump course-service image to ${{ steps.meta.outputs.tag }} [skip ci]"
+          git push
+      # Sau bước này ArgoCD (chạy trong cluster) phát hiện thay đổi Git và tự sync -> CD.

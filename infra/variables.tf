@@ -61,6 +61,12 @@ variable "node_capacity_type" {
   default     = "SPOT"
 }
 
+variable "github_repo" {
+  description = "GitHub repo dạng owner/name (dùng cho OIDC trust)"
+  type        = string
+  default     = "leloc70/eduvn-elearning-eks"
+}
+
 variable "microservices" {
   description = "Danh sách microservice cần tạo ECR repo"
   type        = list(string)

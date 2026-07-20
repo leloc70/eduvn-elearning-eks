@@ -44,6 +44,8 @@ eduvn-elearning-eks/
 | Terraform skeleton (VPC + EKS + ECR + IRSA + ArgoCD) | ✅ Skeleton — cần điền biến & `terraform apply` |
 | Helm chart mẫu | ✅ course-service |
 | GitOps (ArgoCD) | ✅ Application manifest mẫu |
+| CI/CD (GitHub Actions) | ✅ ci.yml + cd.yml (OIDC → ECR → bump tag → ArgoCD) |
+| Microservice code | ✅ course-service (Node + Express, đã test) |
 | Microservice code thật | ⬜ Chưa (giai đoạn tiếp theo) |
 
 > ⚠️ Đây là **project học/delivery mẫu**. `terraform apply` sẽ tạo tài nguyên **tính phí** (EKS control plane, NAT, node...). Đọc `docs/05-cost-estimate.md` và đặt billing alarm trước khi chạy.
