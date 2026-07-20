@@ -1,22 +1,18 @@
 replicaCount: 2
-
 image:
   repository: "500519358149.dkr.ecr.ap-southeast-1.amazonaws.com/eduvn/course-service"
-  tag: "sha-df90d99"
+  tag: "sha-51e6222"
   pullPolicy: IfNotPresent
-
 # IRSA: gắn IAM role cho ServiceAccount (điền ARN từ terraform output course_service_irsa)
 serviceAccount:
   create: true
   name: course-service
   annotations:
     eks.amazonaws.com/role-arn: "arn:aws:iam::500519358149:role/eduvn-dev-course-service"
-
 service:
   type: ClusterIP
   port: 80
   targetPort: 8080
-
 # Ingress qua AWS Load Balancer Controller (tạo ALB)
 ingress:
   enabled: true
@@ -27,7 +23,6 @@ ingress:
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
   host: course.eduvn.example.com
   path: /
-
 resources:
   requests:
     cpu: 100m
@@ -35,13 +30,11 @@ resources:
   limits:
     cpu: 500m
     memory: 256Mi
-
 autoscaling:
   enabled: true
   minReplicas: 2
   maxReplicas: 10
   targetCPUUtilizationPercentage: 70
-
 env:
   - name: TABLE_NAME
     value: "eduvn-dev-courses"
