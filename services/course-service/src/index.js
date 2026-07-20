@@ -11,7 +11,18 @@ import {
 const app = express();
 app.use(express.json());
 
+// CORS: cho phép frontend (origin khác) gọi API.
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", process.env.CORS_ORIGIN || "*");
+  res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
+
 const PORT = process.env.PORT || 8080;
+
+const LEVELS = ["Beginner", "Intermediate", "Advanced"];
 
 // --- Health checks (khớp livenessProbe/readinessProbe trong Helm chart) ---
 app.get("/healthz", (_req, res) => {
@@ -51,7 +62,8 @@ app.get("/courses/:id", async (req, res, next) => {
 
 app.post("/courses", async (req, res, next) => {
   try {
-    const { title, instructor, price } = req.body || {};
+    const { title, instructor, price, description, category, level, durationHours } =
+      req.body || {};
     if (!title) return res.status(400).json({ error: "Thiếu 'title'" });
 
     const course = {
@@ -59,6 +71,10 @@ app.post("/courses", async (req, res, next) => {
       title,
       instructor: instructor || "unknown",
       price: Number(price) || 0,
+      description: description || "",
+      category: category || "General",
+      level: LEVELS.includes(level) ? level : "Beginner",
+      durationHours: Number(durationHours) || 0,
       createdAt: new Date().toISOString(),
     };
     await putCourse(course);
