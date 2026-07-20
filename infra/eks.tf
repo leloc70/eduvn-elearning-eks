@@ -14,11 +14,12 @@ module "eks" {
   enable_cluster_creator_admin_permissions = true
 
   # Add-ons quản lý bởi EKS
+  # aws-ebs-csi-driver bỏ qua: lab không dùng EBS PVC (ArgoCD non-HA + service
+  # đều không cần). Muốn dùng volume thật thì thêm lại kèm IRSA service_account_role_arn.
   cluster_addons = {
-    coredns            = {}
-    kube-proxy         = {}
-    vpc-cni            = {}
-    aws-ebs-csi-driver = {}
+    coredns    = {}
+    kube-proxy = {}
+    vpc-cni    = {}
   }
 
   eks_managed_node_groups = {
