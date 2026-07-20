@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: course-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    # ⚠️ Đổi thành URL repo Git thật của bạn
+    repoURL: https://github.com/your-org/eduvn-elearning-eks.git
+    targetRevision: main
+    path: charts/course-service
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

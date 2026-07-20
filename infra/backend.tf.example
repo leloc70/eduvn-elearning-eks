@@ -1,0 +1,12 @@
+# Remote state cho production — đổi tên thành backend.tf và điền giá trị.
+# Tạo trước bucket S3 + bảng DynamoDB (lock) rồi mới init.
+#
+# terraform {
+#   backend "s3" {
+#     bucket         = "eduvn-terraform-state"
+#     key            = "eks/dev/terraform.tfstate"
+#     region         = "ap-southeast-1"
+#     dynamodb_table = "eduvn-terraform-locks"
+#     encrypt        = true
+#   }
+# }

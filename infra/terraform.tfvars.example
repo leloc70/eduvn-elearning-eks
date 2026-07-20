@@ -1,0 +1,13 @@
+# Copy sang terraform.tfvars và chỉnh sửa
+project     = "eduvn"
+environment = "dev"
+region      = "ap-southeast-1"
+
+azs = ["ap-southeast-1a", "ap-southeast-1b"]
+
+cluster_version     = "1.30"
+node_instance_types = ["t3.medium"]
+node_capacity_type  = "SPOT" # dev: SPOT tiết kiệm; prod core dùng ON_DEMAND
+node_desired_size   = 2
+node_min_size       = 2
+node_max_size       = 4
