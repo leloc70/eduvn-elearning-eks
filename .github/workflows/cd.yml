@@ -3,6 +3,7 @@ name: CD — build, push & bump manifest
 # Chạy khi code service hoặc chart thay đổi trên main.
 # Build image -> push ECR -> cập nhật image tag trong Git -> ArgoCD tự deploy.
 on:
+  workflow_dispatch: {} # cho phép deploy thủ công (gh workflow run cd.yml)
   push:
     branches: [main]
     paths:
