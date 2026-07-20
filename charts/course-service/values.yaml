@@ -25,7 +25,7 @@ ingress:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
-  host: course.eduvn.example.com
+  host: "" # rỗng = ALB phục vụ mọi host -> mở thẳng bằng URL ALB trong trình duyệt
   path: /
 
 resources:

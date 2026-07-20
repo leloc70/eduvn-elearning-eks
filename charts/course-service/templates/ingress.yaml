@@ -12,8 +12,7 @@ metadata:
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
-    - host: {{ .Values.ingress.host }}
-      http:
+    - http:
         paths:
           - path: {{ .Values.ingress.path }}
             pathType: Prefix
@@ -22,4 +21,7 @@ spec:
                 name: {{ include "course-service.name" . }}
                 port:
                   number: {{ .Values.service.port }}
+      {{- if .Values.ingress.host }}
+      host: {{ .Values.ingress.host }}
+      {{- end }}
 {{- end }}
