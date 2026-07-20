@@ -6,8 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    # ⚠️ Đổi thành URL repo Git thật của bạn
-    repoURL: https://github.com/your-org/eduvn-elearning-eks.git
+    repoURL: https://github.com/leloc70/eduvn-elearning-eks.git
     targetRevision: main
     path: charts/course-service
     helm:
