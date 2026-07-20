@@ -61,12 +61,26 @@ gh variable set AWS_PLAN_ROLE_ARN --body "$(terraform -chdir=infra output -raw g
 
 | Workflow / file | Trigger | Việc |
 |---|---|---|
-| `terraform-plan.yml` | PR đụng `infra/**` | Assume role **read-only** (OIDC) → `terraform plan` → comment kết quả vào PR (cập nhật sticky comment) |
+| `terraform-plan.yml` | **Mọi PR** (tự phát hiện `infra/**`) | Nếu đụng infra: assume role read-only (OIDC) → `terraform plan` → comment sticky vào PR. Nếu không: skip nhưng vẫn báo **check pass** → an toàn để đưa vào required. |
 | `security.yml` | PR / push / lịch tuần | `npm audit` (high) · **Trivy** (deps + secrets) · **Checkov** (IaC Terraform) |
 | `dependabot.yml` | Lịch tuần | Tự mở PR update npm / github-actions / terraform / docker |
 
 > `terraform plan` dùng role riêng `*-gha-tf-plan` (ReadOnlyAccess) — tách quyền khỏi role push ECR (least-privilege).
 > Muốn plan chính xác trên state thật: bật remote state (xem `infra/backend.tf.example`).
+
+## Branch protection (Repository Ruleset)
+
+Ruleset `protect-main` siết nhánh `main`:
+- **Bắt buộc PR** (không push thẳng), branch phải up-to-date trước khi merge.
+- **Required status checks** phải pass mới merge được:
+  - `Course service — build & test`
+  - `Helm chart — lint`
+  - `Terraform — fmt & validate`
+  - `Plan & comment` (required-safe: luôn chạy, tự skip nếu PR không đụng infra)
+- Chặn xóa nhánh & force-push.
+
+> Security scan (`npm audit`, Trivy, Checkov) **vẫn chạy** trên mỗi PR nhưng để *informational*
+> (không chặn merge). Khi codebase sạch, có thể "ratchet up" bằng cách thêm chúng vào required checks.
 
 ### 3. Cài ArgoCD Application
 ```bash

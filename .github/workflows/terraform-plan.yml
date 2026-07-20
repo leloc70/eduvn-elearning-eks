@@ -1,12 +1,10 @@
 name: Terraform Plan
 
-# Chạy plan trên PR đụng vào infra/ và comment kết quả vào PR.
+# Chạy trên MỌI PR để check "Plan & comment" luôn xuất hiện (required-safe).
+# Bên trong tự phát hiện thay đổi infra/: có thì plan thật, không thì skip (vẫn pass).
 on:
   pull_request:
     branches: [main]
-    paths:
-      - "infra/**"
-      - ".github/workflows/terraform-plan.yml"
 
 permissions:
   id-token: write        # OIDC assume role
@@ -20,44 +18,64 @@ jobs:
   plan:
     name: Plan & comment
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: infra
     steps:
       - uses: actions/checkout@v4
 
+      - name: Detect infra changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            infra:
+              - 'infra/**'
+
+      - name: No infra changes — skip
+        if: steps.filter.outputs.infra != 'true'
+        run: echo "Không có thay đổi trong infra/ — bỏ qua plan (check pass)."
+
       - name: Configure AWS credentials (OIDC, read-only)
+        if: steps.filter.outputs.infra == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - uses: hashicorp/setup-terraform@v3
+      - name: Setup Terraform
+        if: steps.filter.outputs.infra == 'true'
+        uses: hashicorp/setup-terraform@v3
 
       - name: Format check
         id: fmt
+        if: steps.filter.outputs.infra == 'true'
+        working-directory: infra
         run: terraform fmt -check -recursive
         continue-on-error: true
 
       - name: Init
         id: init
+        if: steps.filter.outputs.infra == 'true'
+        working-directory: infra
         run: terraform init
 
       - name: Validate
         id: validate
+        if: steps.filter.outputs.infra == 'true'
+        working-directory: infra
         run: terraform validate -no-color
 
       - name: Plan
         id: plan
+        if: steps.filter.outputs.infra == 'true'
+        working-directory: infra
         run: |
           set +e
           terraform plan -no-color -input=false -out=tfplan > plan_raw.txt 2>&1
           echo "exitcode=$?" >> "$GITHUB_OUTPUT"
-          # Cắt bớt để vừa giới hạn comment của GitHub (~65k ký tự)
           head -c 60000 plan_raw.txt > plan.txt
         continue-on-error: true
 
       - name: Comment plan on PR
+        if: steps.filter.outputs.infra == 'true'
         uses: actions/github-script@v7
         with:
           script: |
@@ -65,22 +83,22 @@ jobs:
             const plan = fs.readFileSync('infra/plan.txt', 'utf8');
             const marker = '<!-- terraform-plan -->';
             const body = `${marker}
-### 🏗️ Terraform Plan
-| Bước | Kết quả |
-|---|---|
-| Format | \`${{ steps.fmt.outcome }}\` |
-| Init | \`${{ steps.init.outcome }}\` |
-| Validate | \`${{ steps.validate.outcome }}\` |
-| Plan | \`${{ steps.plan.outputs.exitcode == '0' && 'success' || 'review' }}\` |
+            ### 🏗️ Terraform Plan
+            | Bước | Kết quả |
+            |---|---|
+            | Format | \`${{ steps.fmt.outcome }}\` |
+            | Init | \`${{ steps.init.outcome }}\` |
+            | Validate | \`${{ steps.validate.outcome }}\` |
+            | Plan | \`${{ steps.plan.outputs.exitcode == '0' && 'success' || 'review' }}\` |
 
-<details><summary>Xem plan output</summary>
+            <details><summary>Xem plan output</summary>
 
-\`\`\`
-${plan}
-\`\`\`
-</details>
+            \`\`\`
+            ${plan}
+            \`\`\`
+            </details>
 
-*Bởi \`${{ github.workflow }}\` cho commit ${{ github.event.pull_request.head.sha }}*`;
+            *Bởi \`${{ github.workflow }}\` cho commit ${{ github.event.pull_request.head.sha }}*`;
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
@@ -101,7 +119,7 @@ ${plan}
             }
 
       - name: Fail if plan errored
-        if: steps.plan.outputs.exitcode != '0'
+        if: steps.filter.outputs.infra == 'true' && steps.plan.outputs.exitcode != '0'
         run: |
           echo "Terraform plan failed — xem comment PR."
           exit 1

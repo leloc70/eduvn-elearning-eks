@@ -55,4 +55,4 @@ jobs:
           directory: infra
           framework: terraform
           quiet: true
-          # soft_fail: true  # bật nếu chưa muốn chặn PR khi có finding
+          soft_fail: true  # báo finding nhưng không chặn PR (informational)
