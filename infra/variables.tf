@@ -61,6 +61,18 @@ variable "node_capacity_type" {
   default     = "SPOT"
 }
 
+variable "budget_alert_email" {
+  description = "Email nhận cảnh báo AWS Budgets"
+  type        = string
+  default     = "leloc70@gmail.com"
+}
+
+variable "monthly_budget_usd" {
+  description = "Ngưỡng ngân sách tháng (USD) — đo gross usage để canh credit"
+  type        = number
+  default     = 20
+}
+
 variable "github_repo" {
   description = "GitHub repo dạng owner/name (dùng cho OIDC trust)"
   type        = string
