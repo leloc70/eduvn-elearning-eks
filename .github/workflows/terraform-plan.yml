@@ -29,43 +29,59 @@ jobs:
             infra:
               - 'infra/**'
 
-      - name: No infra changes — skip
-        if: steps.filter.outputs.infra != 'true'
-        run: echo "Không có thay đổi trong infra/ — bỏ qua plan (check pass)."
+      # Chỉ plan khi CÓ đụng infra VÀ đã cấu hình AWS_PLAN_ROLE_ARN.
+      # Chưa cấu hình AWS -> skip nhưng check vẫn pass (không chặn PR trước khi dựng hạ tầng).
+      - name: Decide whether to run plan
+        id: decide
+        run: |
+          if [ "${{ steps.filter.outputs.infra }}" = "true" ] && [ -n "${{ vars.AWS_PLAN_ROLE_ARN }}" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip reason
+        if: steps.decide.outputs.run != 'true'
+        run: |
+          if [ "${{ steps.filter.outputs.infra }}" != "true" ]; then
+            echo "Không có thay đổi infra/ — bỏ qua plan (check pass)."
+          else
+            echo "Có thay đổi infra/ nhưng chưa set AWS_PLAN_ROLE_ARN — bỏ qua plan (check pass)."
+          fi
 
       - name: Configure AWS credentials (OIDC, read-only)
-        if: steps.filter.outputs.infra == 'true'
+        if: steps.decide.outputs.run == 'true'
         uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
-        if: steps.filter.outputs.infra == 'true'
+        if: steps.decide.outputs.run == 'true'
         uses: hashicorp/setup-terraform@v4
 
       - name: Format check
         id: fmt
-        if: steps.filter.outputs.infra == 'true'
+        if: steps.decide.outputs.run == 'true'
         working-directory: infra
         run: terraform fmt -check -recursive
         continue-on-error: true
 
       - name: Init
         id: init
-        if: steps.filter.outputs.infra == 'true'
+        if: steps.decide.outputs.run == 'true'
         working-directory: infra
         run: terraform init
 
       - name: Validate
         id: validate
-        if: steps.filter.outputs.infra == 'true'
+        if: steps.decide.outputs.run == 'true'
         working-directory: infra
         run: terraform validate -no-color
 
       - name: Plan
         id: plan
-        if: steps.filter.outputs.infra == 'true'
+        if: steps.decide.outputs.run == 'true'
         working-directory: infra
         run: |
           set +e
@@ -75,7 +91,7 @@ jobs:
         continue-on-error: true
 
       - name: Comment plan on PR
-        if: steps.filter.outputs.infra == 'true'
+        if: steps.decide.outputs.run == 'true'
         uses: actions/github-script@v9
         with:
           script: |
@@ -119,7 +135,7 @@ jobs:
             }
 
       - name: Fail if plan errored
-        if: steps.filter.outputs.infra == 'true' && steps.plan.outputs.exitcode != '0'
+        if: steps.decide.outputs.run == 'true' && steps.plan.outputs.exitcode != '0'
         run: |
           echo "Terraform plan failed — xem comment PR."
           exit 1
