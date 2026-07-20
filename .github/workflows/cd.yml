@@ -28,7 +28,7 @@ jobs:
     name: Build & push image, bump manifest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # Cần token push lại commit bump tag
           token: ${{ secrets.GITHUB_TOKEN }}
