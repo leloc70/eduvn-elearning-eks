@@ -25,9 +25,10 @@ resource "aws_iam_role" "github_actions_ecr" {
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
         }
-        # Chỉ cho repo + nhánh main assume (siết bảo mật).
+        # Khớp cả sub dạng cũ (repo:owner/name:...) lẫn immutable
+        # (repo:owner@ID/name@ID:...) mà GitHub đã chuyển sang.
         StringLike = {
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:ref:refs/heads/main"
+          "token.actions.githubusercontent.com:sub" = "repo:${split("/", var.github_repo)[0]}*/${split("/", var.github_repo)[1]}*:ref:refs/heads/main"
         }
       }
     }]
@@ -85,9 +86,9 @@ resource "aws_iam_role" "github_actions_plan" {
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
         }
-        # Context pull_request được assume để chạy plan.
+        # Context pull_request được assume để chạy plan (khớp cả sub immutable).
         StringLike = {
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:pull_request"
+          "token.actions.githubusercontent.com:sub" = "repo:${split("/", var.github_repo)[0]}*/${split("/", var.github_repo)[1]}*:pull_request"
         }
       }
     }]

@@ -16,7 +16,9 @@ resource "helm_release" "argocd" {
     }
   })]
 
-  depends_on = [module.eks]
+  # Cài sau LB Controller: webhook mservice của controller phải Ready trước,
+  # nếu không việc tạo Service của ArgoCD bị chặn ("no endpoints available").
+  depends_on = [module.eks, helm_release.lb_controller]
 }
 
 # Lấy mật khẩu admin ban đầu:
