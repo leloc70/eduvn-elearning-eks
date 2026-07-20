@@ -70,3 +70,37 @@ output "github_actions_role_arn" {
   description = "Gán vào biến repo AWS_ROLE_ARN của GitHub Actions"
   value       = aws_iam_role.github_actions_ecr.arn
 }
+
+# --- Role read-only cho terraform plan trên Pull Request ---
+resource "aws_iam_role" "github_actions_plan" {
+  name = "${local.name}-gha-tf-plan"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Federated = aws_iam_openid_connect_provider.github.arn }
+      Action    = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+        }
+        # Context pull_request được assume để chạy plan.
+        StringLike = {
+          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:pull_request"
+        }
+      }
+    }]
+  })
+}
+
+# Plan chỉ cần đọc — gắn ReadOnlyAccess (managed). Prod có thể siết hẹp hơn.
+resource "aws_iam_role_policy_attachment" "github_actions_plan_ro" {
+  role       = aws_iam_role.github_actions_plan.name
+  policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+}
+
+output "github_actions_plan_role_arn" {
+  description = "Gán vào biến repo AWS_PLAN_ROLE_ARN của GitHub Actions"
+  value       = aws_iam_role.github_actions_plan.arn
+}

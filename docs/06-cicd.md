@@ -50,11 +50,23 @@ terraform output -raw github_actions_role_arn
 
 ### 2. Khai báo biến cho GitHub Actions
 ```bash
-gh variable set AWS_REGION   --body "ap-southeast-1"
-gh variable set AWS_ROLE_ARN --body "<arn từ terraform output>"
+gh variable set AWS_REGION        --body "ap-southeast-1"
+gh variable set AWS_ROLE_ARN      --body "$(terraform -chdir=infra output -raw github_actions_role_arn)"
+gh variable set AWS_PLAN_ROLE_ARN --body "$(terraform -chdir=infra output -raw github_actions_plan_role_arn)"
 ```
 > Dùng **repository variables** (không phải secret) vì ARN/region không nhạy cảm.
 > `GITHUB_TOKEN` tự có sẵn — không cần tạo.
+
+## Workflow bổ sung
+
+| Workflow / file | Trigger | Việc |
+|---|---|---|
+| `terraform-plan.yml` | PR đụng `infra/**` | Assume role **read-only** (OIDC) → `terraform plan` → comment kết quả vào PR (cập nhật sticky comment) |
+| `security.yml` | PR / push / lịch tuần | `npm audit` (high) · **Trivy** (deps + secrets) · **Checkov** (IaC Terraform) |
+| `dependabot.yml` | Lịch tuần | Tự mở PR update npm / github-actions / terraform / docker |
+
+> `terraform plan` dùng role riêng `*-gha-tf-plan` (ReadOnlyAccess) — tách quyền khỏi role push ECR (least-privilege).
+> Muốn plan chính xác trên state thật: bật remote state (xem `infra/backend.tf.example`).
 
 ### 3. Cài ArgoCD Application
 ```bash

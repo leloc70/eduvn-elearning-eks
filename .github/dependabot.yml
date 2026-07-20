@@ -1,0 +1,30 @@
+version: 2
+updates:
+  # Dependencies của microservice
+  - package-ecosystem: npm
+    directory: /services/course-service
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "npm"]
+
+  # GitHub Actions dùng trong workflow
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels: ["dependencies", "ci"]
+
+  # Terraform providers/modules
+  - package-ecosystem: terraform
+    directory: /infra
+    schedule:
+      interval: weekly
+    labels: ["dependencies", "terraform"]
+
+  # Base image trong Dockerfile
+  - package-ecosystem: docker
+    directory: /services/course-service
+    schedule:
+      interval: weekly
+    labels: ["dependencies", "docker"]
