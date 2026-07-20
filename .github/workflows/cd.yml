@@ -7,14 +7,16 @@ on:
   push:
     branches: [main]
     paths:
+      # Chỉ build khi code service đổi. KHÔNG gồm charts/ để manifest bump
+      # (output của chính CD) không tự trigger lại -> tránh vòng lặp.
       - "services/course-service/**"
-      - "charts/course-service/**"
       - ".github/workflows/cd.yml"
 
 # OIDC: id-token để assume IAM role; contents:write để commit bump tag.
 permissions:
   id-token: write
   contents: write
+  pull-requests: write
 
 concurrency:
   group: cd-course-service
@@ -53,9 +55,8 @@ jobs:
         with:
           context: services/course-service
           push: true
-          tags: |
-            ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ steps.meta.outputs.tag }}
-            ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:latest
+          # Chỉ tag sha (ECR để IMMUTABLE nên không push lại 'latest' được)
+          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ steps.meta.outputs.tag }}
 
       - name: Bump image in Helm values
         env:
@@ -65,14 +66,25 @@ jobs:
           yq -i '.image.repository = strenv(REGISTRY) + "/" + strenv(ECR_REPO)' charts/course-service/values.yaml
           yq -i '.image.tag = strenv(TAG)' charts/course-service/values.yaml
 
-      - name: Commit & push manifest bump
+      # Mở PR bump (không push thẳng main — ruleset chặn). PR tự merge khi CI xanh.
+      - name: Open auto-merge PR to bump image
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.meta.outputs.tag }}
         run: |
+          if git diff --quiet; then
+            echo "Manifest không đổi — bỏ qua."; exit 0
+          fi
+          BRANCH="ci/bump-course-service-${TAG}"
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet; then
-            echo "No manifest change"; exit 0
-          fi
+          git checkout -b "$BRANCH"
           git add charts/course-service/values.yaml
-          git commit -m "ci: bump course-service image to ${{ steps.meta.outputs.tag }} [skip ci]"
-          git push
-      # Sau bước này ArgoCD (chạy trong cluster) phát hiện thay đổi Git và tự sync -> CD.
+          git commit -m "ci: bump course-service image to ${TAG}"
+          git push -u origin "$BRANCH"
+          gh pr create --base main --head "$BRANCH" \
+            --title "ci: bump course-service image to ${TAG}" \
+            --body "Automated image bump by CD. ArgoCD sẽ sync sau khi merge."
+          gh pr merge "$BRANCH" --squash --auto --delete-branch
+      # PR merge (charts/) không trigger lại CD (paths chỉ gồm services/) -> không loop.
+      # ArgoCD phát hiện values.yaml đổi và tự sync.

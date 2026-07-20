@@ -1,8 +1,8 @@
 replicaCount: 2
 
 image:
-  repository: "<ACCOUNT_ID>.dkr.ecr.ap-southeast-1.amazonaws.com/eduvn/course-service"
-  tag: "latest"
+  repository: "500519358149.dkr.ecr.ap-southeast-1.amazonaws.com/eduvn/course-service"
+  tag: "sha-df90d99"
   pullPolicy: IfNotPresent
 
 # IRSA: gắn IAM role cho ServiceAccount (điền ARN từ terraform output course_service_irsa)
@@ -10,7 +10,7 @@ serviceAccount:
   create: true
   name: course-service
   annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::<ACCOUNT_ID>:role/eduvn-dev-course-service"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::500519358149:role/eduvn-dev-course-service"
 
 service:
   type: ClusterIP
