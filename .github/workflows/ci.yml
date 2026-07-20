@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@v5
       - name: Helm lint
         run: helm lint charts/course-service
 
@@ -62,7 +62,7 @@ jobs:
         working-directory: infra
     steps:
       - uses: actions/checkout@v5
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
       - name: Format check
         run: terraform fmt -check -recursive
       - name: Init (no backend)
