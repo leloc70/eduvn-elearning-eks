@@ -4,6 +4,7 @@ resource "aws_ecr_repository" "services" {
 
   name                 = "${var.project}/${each.value}"
   image_tag_mutability = "IMMUTABLE"
+  force_delete         = true # cho phép destroy dù repo còn image (lab)
 
   image_scanning_configuration {
     scan_on_push = true # quét lỗ hổng khi push
