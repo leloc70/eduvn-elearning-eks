@@ -8,6 +8,13 @@ spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
+  # Rollout zero-downtime (Mandate #3): không hạ pod cũ trước khi pod mới Ready.
+  minReadySeconds: {{ .Values.rollout.minReadySeconds }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: {{ .Values.rollout.maxUnavailable }}
+      maxSurge: {{ .Values.rollout.maxSurge }}
   selector:
     matchLabels:
       {{- include "course-service.selectorLabels" . | nindent 6 }}
@@ -17,10 +24,26 @@ spec:
         {{- include "course-service.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ .Values.serviceAccount.name }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      # Chạy non-root (Mandate #5)
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.topologySpread.enabled }}
+      # Trải pod ra nhiều zone -> mất 1 zone/node không rớt cả service (Mandate #3)
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "course-service.selectorLabels" . | nindent 14 }}
+      {{- end }}
       containers:
         - name: {{ include "course-service.name" . }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
           ports:
             - containerPort: {{ .Values.service.targetPort }}
           {{- with .Values.env }}
@@ -29,6 +52,11 @@ spec:
           {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          # Chờ drain kết nối trước khi pod bị xoá (Mandate #3)
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep {{ .Values.rollout.preStopSleep }}"]
           livenessProbe:
             httpGet:
               path: /healthz
@@ -41,3 +69,10 @@ spec:
               port: {{ .Values.service.targetPort }}
             initialDelaySeconds: 5
             periodSeconds: 10
+          # /tmp ghi được vì rootfs read-only (Mandate #5)
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

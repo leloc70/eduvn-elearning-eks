@@ -1,0 +1,13 @@
+# Pod cố tình vi phạm cả 3 luật: chạy root (không securityContext) + tag latest +
+# thiếu requests/limits. Khi enforce, `kubectl apply` cái này PHẢI bị từ chối.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: policy-violation-test
+  namespace: default
+spec:
+  containers:
+    - name: bad
+      image: nginx:latest # vi phạm disallow-latest
+      # thiếu securityContext.runAsNonRoot -> vi phạm require-nonroot
+      # thiếu resources -> vi phạm require-resources
