@@ -90,3 +90,9 @@ networkPolicy:
   enabled: true
   ingressCIDRs:
     - 10.0.0.0/16 # VPC CIDR (khớp infra/variables.tf vpc_cidr)
+
+# Prometheus scrape /metrics (cho dashboard SLO). Cần Prometheus Operator (kube-prometheus-stack).
+serviceMonitor:
+  enabled: true
+  releaseLabel: kube-prometheus-stack
+  interval: 15s
