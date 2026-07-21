@@ -23,6 +23,8 @@ xử. Ghi để nộp bài và tránh lặp lại. Ký hiệu trụ: Rel=Reliabi
 | 15 | `prometheus-operator` Pending (CPU/mem còn nhiều) | **Pod-density limit** t3.medium (~17 pod/node) | Scale node group 2→3 (+ Karpenter) |
 | 16 | Helm `context deadline exceeded` | kube-prometheus-stack lớn > timeout 5' mặc định | `timeout = 900` trên helm_release |
 | 17 | `kubectl apply`: "control characters are not allowed" | File YAML có **CRLF** (Windows/git autocrlf) | `tr -d '\r'` trước khi apply (hoặc ghi LF) |
+| 18 | `terraform destroy` timeout ở `helm_release.kyverno` | Kyverno có **finalizer/webhook** làm helm uninstall treo → chặn xóa cluster | `terraform state rm helm_release.kyverno` (chết cùng cluster) rồi destroy tiếp |
+| 19 | AWS CLI (Windows) `Unable to load paramfile /tmp/...` | AWS exe không đọc được path kiểu Git-Bash `/tmp` | Ghi file ra path Windows (`$env:TEMP`), truyền `file://C:\...` |
 
 ---
 
