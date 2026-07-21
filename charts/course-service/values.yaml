@@ -24,8 +24,10 @@ ingress:
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
-  host: "" # rỗng = ALB phục vụ mọi host -> mở thẳng bằng URL ALB trong trình duyệt
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    # Không set certificate-arn: LB Controller tự tìm ACM cert khớp host bên dưới.
+  host: api.mywebsitelocle.click
   path: /
 
 resources:

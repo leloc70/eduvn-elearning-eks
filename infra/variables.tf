@@ -61,6 +61,18 @@ variable "node_capacity_type" {
   default     = "SPOT"
 }
 
+variable "root_domain" {
+  description = "Domain gốc (hosted zone Route 53)"
+  type        = string
+  default     = "mywebsitelocle.click"
+}
+
+variable "api_domain" {
+  description = "Subdomain cho backend ALB (HTTPS)"
+  type        = string
+  default     = "api.mywebsitelocle.click"
+}
+
 variable "budget_alert_email" {
   description = "Email nhận cảnh báo AWS Budgets"
   type        = string
