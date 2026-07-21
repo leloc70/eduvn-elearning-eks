@@ -1,7 +1,7 @@
 # IRSA cho AWS Load Balancer Controller (tạo ALB từ Ingress)
 module "lb_controller_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.39"
+  version = "~> 6.6"
 
   role_name                              = "${local.name}-lb-controller"
   attach_load_balancer_controller_policy = true
@@ -46,7 +46,7 @@ resource "helm_release" "lb_controller" {
 # Nhân bản block này cho từng service, gắn policy least-privilege phù hợp.
 module "course_service_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.39"
+  version = "~> 6.6"
 
   role_name = "${local.name}-course-service"
 
