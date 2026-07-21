@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: "500519358149.dkr.ecr.ap-southeast-1.amazonaws.com/eduvn/course-service"
-  tag: "sha-df90d99"
+  tag: "sha-52475b9"
   pullPolicy: IfNotPresent
 
 # IRSA: gắn IAM role cho ServiceAccount (điền ARN từ terraform output course_service_irsa)
