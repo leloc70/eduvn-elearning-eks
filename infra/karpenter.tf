@@ -2,7 +2,7 @@
 # IAM controller + node role + SQS interruption queue do submodule lo (Pod Identity).
 module "karpenter" {
   source  = "terraform-aws-modules/eks/aws//modules/karpenter"
-  version = "~> 20.8"
+  version = "~> 21.24"
 
   cluster_name = module.eks.cluster_name
 
