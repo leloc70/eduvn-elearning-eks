@@ -1,12 +1,12 @@
 # --- Build stage ---
-FROM node:20-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev
 COPY src ./src
 
 # --- Runtime stage ---
-FROM node:20-alpine AS runtime
+FROM node:26-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8080
