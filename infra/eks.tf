@@ -24,6 +24,8 @@ module "eks" {
     coredns    = {}
     kube-proxy = {}
     vpc-cni    = {}
+    # Pod Identity: Karpenter controller nhận quyền AWS qua đây
+    eks-pod-identity-agent = {}
   }
 
   eks_managed_node_groups = {
@@ -39,6 +41,11 @@ module "eks" {
         role = "general"
       }
     }
+  }
+
+  # Karpenter discover security group qua tag này
+  node_security_group_tags = {
+    "karpenter.sh/discovery" = local.name
   }
 
   tags = {

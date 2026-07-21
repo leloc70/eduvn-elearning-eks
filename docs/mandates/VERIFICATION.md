@@ -74,6 +74,22 @@ aws dynamodb describe-table --table-name eduvn-dev-courses --query "Table.TableS
 
 ---
 
+## §Obs — Prometheus / Grafana / Karpenter (#13, nền #16)
+```bash
+# Prometheus + Grafana + Alertmanager
+kubectl -n monitoring get pods
+kubectl -n monitoring port-forward svc/kube-prometheus-stack-prometheus 9090   # http://localhost:9090
+kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 3000:80   # http://localhost:3000 (admin/eduvn-admin)
+
+# Karpenter
+kubectl -n karpenter get pods                 # Running
+kubectl get nodepool,ec2nodeclass             # READY True
+kubectl -n karpenter logs deploy/karpenter -f # xem quyết định provision/consolidate
+kubectl get nodes -L karpenter.sh/nodepool,node.kubernetes.io/instance-type,kubernetes.io/arch
+```
+**Bằng chứng (2026-07-21):** monitoring pods all Running; `nodepool/default` + `ec2nodeclass/default` READY True;
+karpenter Running (sau khi sửa Pod Identity namespace).
+
 ## Ghi chú
 - Kyverno đang **Audit** → để đạt DoD #5 (chặn thật) đổi `validationFailureAction: Audit → Enforce`
   trong `k8s/policies/*.yaml` rồi `kubectl apply -f k8s/policies/`.
