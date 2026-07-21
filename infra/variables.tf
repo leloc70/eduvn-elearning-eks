@@ -23,9 +23,9 @@ variable "vpc_cidr" {
 }
 
 variable "azs" {
-  description = "Danh sách Availability Zones"
+  description = "Danh sách Availability Zones (3 AZ — chịu mất 1 AZ, Mandate #21)"
   type        = list(string)
-  default     = ["ap-southeast-1a", "ap-southeast-1b"]
+  default     = ["ap-southeast-1a", "ap-southeast-1b", "ap-southeast-1c"]
 }
 
 variable "cluster_version" {

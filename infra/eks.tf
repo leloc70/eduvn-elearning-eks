@@ -37,6 +37,18 @@ module "eks" {
       min_size     = var.node_min_size
       max_size     = var.node_max_size
 
+      # Mandate #18: EBS gp3 (rẻ hơn gp2 cùng hiệu năng) + mã hoá.
+      block_device_mappings = {
+        xvda = {
+          device_name = "/dev/xvda"
+          ebs = {
+            volume_size = 30
+            volume_type = "gp3"
+            encrypted   = true
+          }
+        }
+      }
+
       labels = {
         role = "general"
       }

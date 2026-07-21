@@ -10,7 +10,12 @@ export const TABLE_NAME = process.env.TABLE_NAME || "";
 const REGION = process.env.AWS_REGION || "ap-southeast-1";
 
 // Trên EKS, credential lấy qua IRSA (không cần access key trong code).
-export const ddb = new DynamoDBClient({ region: REGION });
+// Mandate #17: fail-fast + retry giới hạn -> DynamoDB chậm/lỗi không treo request.
+export const ddb = new DynamoDBClient({
+  region: REGION,
+  maxAttempts: 3,
+  requestHandler: { requestTimeout: 2000, connectionTimeout: 1000 },
+});
 const doc = DynamoDBDocumentClient.from(ddb);
 
 // Fallback in-memory khi chưa cấu hình bảng (chạy local nhanh).

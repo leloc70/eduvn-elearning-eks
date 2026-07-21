@@ -1,0 +1,32 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-signature
+  annotations:
+    policies.kyverno.io/title: Verify cosign signature (Mandate #10)
+spec:
+  # Audit trước; đổi Enforce sau khi image đã được cd.yml ký (cosign keyless).
+  validationFailureAction: Audit
+  webhookTimeoutSeconds: 30
+  background: false
+  rules:
+    - name: verify-cosign-keyless
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+              namespaces: ["default"]
+      verifyImages:
+        - imageReferences:
+            - "*.dkr.ecr.*.amazonaws.com/eduvn/*"
+          mutateDigest: true # ghim theo digest (Mandate #10: tham chiếu digest)
+          verifyDigest: true
+          required: true
+          attestors:
+            - entries:
+                # Ký keyless bởi workflow cd.yml qua GitHub OIDC.
+                - keyless:
+                    subject: "https://github.com/leloc70/eduvn-elearning-eks/.github/workflows/*"
+                    issuer: "https://token.actions.githubusercontent.com"
+                    rekor:
+                      url: https://rekor.sigstore.dev

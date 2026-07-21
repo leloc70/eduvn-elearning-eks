@@ -1,12 +1,12 @@
 # --- Build stage ---
-FROM node:20-alpine AS build
+FROM node:20-alpine@sha256:afdf98210b07b586eb71fa22ba2e432e058e4cd1304d31ed60888755b8c865fb AS build
 WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev
 COPY src ./src
 
 # --- Runtime stage ---
-FROM node:20-alpine AS runtime
+FROM node:20-alpine@sha256:afdf98210b07b586eb71fa22ba2e432e058e4cd1304d31ed60888755b8c865fb AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8080
