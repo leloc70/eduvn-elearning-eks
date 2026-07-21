@@ -90,6 +90,32 @@ kubectl get nodes -L karpenter.sh/nodepool,node.kubernetes.io/instance-type,kube
 **Bằng chứng (2026-07-21):** monitoring pods all Running; `nodepool/default` + `ec2nodeclass/default` READY True;
 karpenter Running (sau khi sửa Pod Identity namespace).
 
+## §DR — Backup/Restore (#20) — ĐÃ VERIFIED
+Drill PITR trên bảng live `eduvn-courses` (2026-07-21):
+```
+PITR status: ENABLED
+Item count production: 2
+restore-table-to-point-in-time -> eduvn-courses-restore-test (ACTIVE)
+Item count bảng restore: 2  ← KHỚP -> dữ liệu khôi phục đúng ✓
+delete-table eduvn-courses-restore-test (dọn)
+```
+Runbook: [`DR-RESTORE-DRILL.md`](DR-RESTORE-DRILL.md). Restore ra bảng mới → không đụng production.
+
+## §Pipeline/Resilience/Cost/DR (B — verify khi cluster chạy)
+```bash
+# #10 image đã ký:
+cosign verify --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp "https://github.com/leloc70/.*" \
+  <registry>/eduvn/course-service:sha-xxxx
+kubectl apply -f k8s/policies/04-verify-images.yaml   # Audit -> Enforce
+# #17: automountServiceAccountToken=false
+kubectl get pod -l app.kubernetes.io/name=course-service -o jsonpath='{.items[0].spec.automountServiceAccountToken}'
+# #18: VPC endpoints
+aws ec2 describe-vpc-endpoints --query "VpcEndpoints[].ServiceName"
+# #21: node trải 3 AZ
+kubectl get nodes -L topology.kubernetes.io/zone
+```
+
 ## Ghi chú
 - Kyverno đang **Audit** → để đạt DoD #5 (chặn thật) đổi `validationFailureAction: Audit → Enforce`
   trong `k8s/policies/*.yaml` rồi `kubectl apply -f k8s/policies/`.
