@@ -25,6 +25,7 @@ xử. Ghi để nộp bài và tránh lặp lại. Ký hiệu trụ: Rel=Reliabi
 | 17 | `kubectl apply`: "control characters are not allowed" | File YAML có **CRLF** (Windows/git autocrlf) | `tr -d '\r'` trước khi apply (hoặc ghi LF) |
 | 18 | `terraform destroy` timeout ở `helm_release.kyverno` | Kyverno có **finalizer/webhook** làm helm uninstall treo → chặn xóa cluster | `terraform state rm helm_release.kyverno` (chết cùng cluster) rồi destroy tiếp |
 | 19 | AWS CLI (Windows) `Unable to load paramfile /tmp/...` | AWS exe không đọc được path kiểu Git-Bash `/tmp` | Ghi file ra path Windows (`$env:TEMP`), truyền `file://C:\...` |
+| 20 | `helm_release`: "Kubernetes cluster unreachable: asked for credentials" giữa apply | Token từ `data.aws_eks_cluster_auth` (lấy lúc plan) **hết hạn** khi apply dài (>~15') | Provider k8s/helm dùng **`exec`** (`aws eks get-token`) -> token tươi mỗi lần |
 
 ---
 
