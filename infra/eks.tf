@@ -7,6 +7,10 @@ module "eks" {
 
   cluster_endpoint_public_access = true
 
+  # Mandate #4: ghi audit log control-plane -> CloudWatch (ai gọi API K8s, khi nào).
+  cluster_enabled_log_types              = ["api", "audit", "authenticator"]
+  cloudwatch_log_group_retention_in_days = 30
+
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 

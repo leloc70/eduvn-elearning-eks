@@ -1,0 +1,14 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+# Giữ luôn ≥1 pod khi drain node / bảo trì (Mandate #3)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "course-service.name" . }}
+  labels:
+    {{- include "course-service.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "course-service.selectorLabels" . | nindent 6 }}
+{{- end }}

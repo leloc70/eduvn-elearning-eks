@@ -49,3 +49,44 @@ env:
     value: "eduvn-dev-courses"
   - name: AWS_REGION
     value: "ap-southeast-1"
+
+# --- Hardening (mandate solutions) ---
+
+# Mandate #5: chạy non-root, drop capabilities, rootfs read-only.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1001
+  capabilities:
+    drop: ["ALL"]
+
+# Mandate #3: rollout zero-downtime + drain.
+terminationGracePeriodSeconds: 30
+rollout:
+  maxUnavailable: 0
+  maxSurge: 1
+  minReadySeconds: 10
+  preStopSleep: 5
+
+# Mandate #3: giữ ≥1 pod khi drain node.
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Mandate #3: trải pod ra nhiều zone.
+topologySpread:
+  enabled: true
+
+# Mandate #1: chặn traffic ngoài allowlist. ingressCIDRs = CIDR subnet nơi ALB đặt ENI.
+networkPolicy:
+  enabled: true
+  ingressCIDRs:
+    - 10.0.0.0/16 # VPC CIDR (khớp infra/variables.tf vpc_cidr)

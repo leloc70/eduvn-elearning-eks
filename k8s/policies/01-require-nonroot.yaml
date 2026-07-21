@@ -1,0 +1,27 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-run-as-nonroot
+  annotations:
+    policies.kyverno.io/title: Require non-root containers (Mandate #5)
+spec:
+  # Bắt đầu ở Audit -> quan sát PolicyReport -> đổi Enforce khi sạch.
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: run-as-non-root
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+      exclude:
+        any:
+          - resources:
+              namespaces: ["kube-system", "kyverno", "argocd"]
+      validate:
+        message: "Container phải chạy non-root (securityContext.runAsNonRoot=true)."
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  runAsNonRoot: true

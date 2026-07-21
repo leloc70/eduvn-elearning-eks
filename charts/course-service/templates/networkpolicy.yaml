@@ -1,0 +1,42 @@
+{{- if .Values.networkPolicy.enabled }}
+# Mandate #1/#5: chỉ cho traffic cần thiết vào pod (giảm bề mặt tấn công).
+# Ingress: chỉ từ ALB (traffic vào cổng app). Egress: DNS + HTTPS ra AWS (DynamoDB/STS).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "course-service.name" . }}
+  labels:
+    {{- include "course-service.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "course-service.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        {{- range .Values.networkPolicy.ingressCIDRs }}
+        - ipBlock:
+            cidr: {{ . }}
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.targetPort }}
+  egress:
+    # DNS
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # HTTPS ra ngoài (DynamoDB, STS qua IRSA)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+{{- end }}
