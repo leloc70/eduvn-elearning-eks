@@ -1,0 +1,19 @@
+{{- if .Values.serviceMonitor.enabled }}
+# Cho kube-prometheus-stack scrape /metrics của course-service.
+# Label release=<...> để Prometheus (serviceMonitorSelector) chọn được.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "course-service.name" . }}
+  labels:
+    {{- include "course-service.labels" . | nindent 4 }}
+    release: {{ .Values.serviceMonitor.releaseLabel }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "course-service.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.serviceMonitor.interval }}
+{{- end }}

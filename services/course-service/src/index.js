@@ -7,9 +7,12 @@ import {
   getCourse,
   putCourse,
 } from "./db.js";
+import { metricsMiddleware, metricsHandler } from "./metrics.js";
 
 const app = express();
 app.use(express.json());
+app.use(metricsMiddleware);
+app.get("/metrics", metricsHandler);
 
 // CORS: cho phép frontend (origin khác) gọi API.
 app.use((req, res, next) => {

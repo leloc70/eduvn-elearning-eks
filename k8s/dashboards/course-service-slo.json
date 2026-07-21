@@ -1,0 +1,97 @@
+{
+  "uid": "course-service-slo",
+  "title": "Course Service — SLO",
+  "tags": ["eduvn", "slo"],
+  "schemaVersion": 39,
+  "editable": true,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "hide": 0,
+        "current": {}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Availability (non-5xx)",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "thresholds": { "steps": [ { "color": "red", "value": null }, { "color": "yellow", "value": 99 }, { "color": "green", "value": 99.5 } ] } } },
+      "targets": [ { "expr": "100 * (1 - (sum(rate(http_request_duration_seconds_count{service=\"course-service\",status=~\"5..\"}[5m])) or vector(0)) / clamp_min(sum(rate(http_request_duration_seconds_count{service=\"course-service\"}[5m])), 1))", "refId": "A" } ]
+    },
+    {
+      "type": "stat",
+      "title": "Request rate (req/s)",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "reqps", "color": { "mode": "fixed", "fixedColor": "blue" } } },
+      "targets": [ { "expr": "sum(rate(http_request_duration_seconds_count{service=\"course-service\",route!=\"/metrics\"}[1m]))", "refId": "A" } ]
+    },
+    {
+      "type": "stat",
+      "title": "Error rate (5xx %)",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 0.5 }, { "color": "red", "value": 1 } ] } } },
+      "targets": [ { "expr": "100 * (sum(rate(http_request_duration_seconds_count{service=\"course-service\",status=~\"5..\"}[5m])) or vector(0)) / clamp_min(sum(rate(http_request_duration_seconds_count{service=\"course-service\"}[5m])), 1)", "refId": "A" } ]
+    },
+    {
+      "type": "stat",
+      "title": "Pods Ready",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "green" } } },
+      "targets": [ { "expr": "sum(kube_pod_status_ready{namespace=\"default\",condition=\"true\",pod=~\"course-service-.*\"})", "refId": "A" } ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Request rate by route / status",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 15 } } },
+      "targets": [ { "expr": "sum by (route, status) (rate(http_request_duration_seconds_count{service=\"course-service\",route!=\"/metrics\"}[1m]))", "legendFormat": "{{route}} [{{status}}]", "refId": "A" } ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Latency p50 / p95 / p99 (s)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "fillOpacity": 5 } } },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{service=\"course-service\",route!=\"/metrics\"}[5m])) by (le))", "legendFormat": "p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service=\"course-service\",route!=\"/metrics\"}[5m])) by (le))", "legendFormat": "p95", "refId": "B" },
+        { "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{service=\"course-service\",route!=\"/metrics\"}[5m])) by (le))", "legendFormat": "p99", "refId": "C" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Replicas & HPA",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [
+        { "expr": "kube_deployment_status_replicas_available{namespace=\"default\",deployment=\"course-service\"}", "legendFormat": "available", "refId": "A" },
+        { "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"default\",horizontalpodautoscaler=\"course-service\"}", "legendFormat": "hpa current", "refId": "B" },
+        { "expr": "kube_horizontalpodautoscaler_status_desired_replicas{namespace=\"default\",horizontalpodautoscaler=\"course-service\"}", "legendFormat": "hpa desired", "refId": "C" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU & Memory (pods)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "custom": { "fillOpacity": 10 } } },
+      "targets": [
+        { "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"default\",pod=~\"course-service-.*\",container!=\"\",container!=\"POD\"}[5m]))", "legendFormat": "CPU cores", "refId": "A" },
+        { "expr": "sum(container_memory_working_set_bytes{namespace=\"default\",pod=~\"course-service-.*\",container!=\"\",container!=\"POD\"})", "legendFormat": "Memory bytes", "refId": "B" }
+      ]
+    }
+  ]
+}
