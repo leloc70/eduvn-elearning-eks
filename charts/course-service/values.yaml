@@ -68,6 +68,9 @@ securityContext:
   capabilities:
     drop: ["ALL"]
 
+# Mandate #17: least-privilege — không mount K8s API token (IRSA vẫn hoạt động).
+automountServiceAccountToken: false
+
 # Mandate #3: rollout zero-downtime + drain.
 terminationGracePeriodSeconds: 30
 rollout:

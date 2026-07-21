@@ -24,6 +24,8 @@ spec:
         {{- include "course-service.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ .Values.serviceAccount.name }}
+      # Mandate #17: không mount K8s API token (app chỉ cần AWS qua IRSA, không gọi K8s API).
+      automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       # Chạy non-root (Mandate #5)
       securityContext:
