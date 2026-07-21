@@ -2,9 +2,10 @@
 resource "aws_route53_record" "a" {
   for_each = toset(concat([var.domain_name], var.subject_alternative_names))
 
-  zone_id = data.aws_route53_zone.this.zone_id
-  name    = each.value
-  type    = "A"
+  zone_id         = data.aws_route53_zone.this.zone_id
+  name            = each.value
+  type            = "A"
+  allow_overwrite = true
 
   alias {
     name                   = aws_cloudfront_distribution.site.domain_name
@@ -16,9 +17,10 @@ resource "aws_route53_record" "a" {
 resource "aws_route53_record" "aaaa" {
   for_each = toset(concat([var.domain_name], var.subject_alternative_names))
 
-  zone_id = data.aws_route53_zone.this.zone_id
-  name    = each.value
-  type    = "AAAA"
+  zone_id         = data.aws_route53_zone.this.zone_id
+  name            = each.value
+  type            = "AAAA"
+  allow_overwrite = true
 
   alias {
     name                   = aws_cloudfront_distribution.site.domain_name
