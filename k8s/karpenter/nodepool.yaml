@@ -1,0 +1,31 @@
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: default
+spec:
+  template:
+    spec:
+      requirements:
+        # Cho phép cả x86 lẫn Graviton (arm64) — Karpenter chọn rẻ nhất (Mandate #13)
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64", "arm64"]
+        # Ưu tiên Spot
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot", "on-demand"]
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values:
+            ["t3.medium", "t3a.medium", "t4g.medium", "t3.large", "t4g.large", "c7g.large"]
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+      expireAfter: 720h
+  limits:
+    cpu: "16" # trần để không đốt budget
+  disruption:
+    # Co node xuống khi rảnh -> trả tiền theo demand (Mandate #13)
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 30s
