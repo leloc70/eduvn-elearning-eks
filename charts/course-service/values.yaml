@@ -1,22 +1,18 @@
 replicaCount: 2
-
 image:
   repository: "500519358149.dkr.ecr.ap-southeast-1.amazonaws.com/eduvn/course-service"
-  tag: "sha-df90d99"
+  tag: "sha-52475b9"
   pullPolicy: IfNotPresent
-
 # IRSA: gắn IAM role cho ServiceAccount (điền ARN từ terraform output course_service_irsa)
 serviceAccount:
   create: true
   name: course-service
   annotations:
     eks.amazonaws.com/role-arn: "arn:aws:iam::500519358149:role/eduvn-dev-course-service"
-
 service:
   type: ClusterIP
   port: 80
   targetPort: 8080
-
 # Ingress qua AWS Load Balancer Controller (tạo ALB)
 ingress:
   enabled: true
@@ -29,7 +25,6 @@ ingress:
     # Không set certificate-arn: LB Controller tự tìm ACM cert khớp host bên dưới.
   host: api.mywebsitelocle.click
   path: /
-
 resources:
   requests:
     cpu: 100m
@@ -37,19 +32,16 @@ resources:
   limits:
     cpu: 500m
     memory: 256Mi
-
 autoscaling:
   enabled: true
   minReplicas: 2
   maxReplicas: 10
   targetCPUUtilizationPercentage: 70
-
 env:
   - name: TABLE_NAME
     value: "eduvn-dev-courses"
   - name: AWS_REGION
     value: "ap-southeast-1"
-
 # --- Hardening (mandate solutions) ---
 
 # Mandate #5: chạy non-root, drop capabilities, rootfs read-only.
@@ -67,7 +59,6 @@ securityContext:
   runAsUser: 1001
   capabilities:
     drop: ["ALL"]
-
 # Mandate #3: rollout zero-downtime + drain.
 terminationGracePeriodSeconds: 30
 rollout:
@@ -75,16 +66,13 @@ rollout:
   maxSurge: 1
   minReadySeconds: 10
   preStopSleep: 5
-
 # Mandate #3: giữ ≥1 pod khi drain node.
 podDisruptionBudget:
   enabled: true
   minAvailable: 1
-
 # Mandate #3: trải pod ra nhiều zone.
 topologySpread:
   enabled: true
-
 # Mandate #1: chặn traffic ngoài allowlist. ingressCIDRs = CIDR subnet nơi ALB đặt ENI.
 networkPolicy:
   enabled: true
