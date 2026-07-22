@@ -1,0 +1,25 @@
+# ArgoCD Application: GitOps sync course-service từ git (dùng values-local.yaml).
+# targetRevision trỏ branch chứa lab; đổi sang "main" sau khi merge.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: course-service
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/leloc70/eduvn-elearning-eks.git
+    targetRevision: chore/local-lab
+    path: charts/course-service
+    helm:
+      valueFiles:
+        - values-local.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: eduvn
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

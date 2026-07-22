@@ -1,0 +1,27 @@
+# kube-prometheus-stack rút gọn cho lab local (nhẹ RAM).
+# Prometheus tự động chọn ServiceMonitor có label release=kube-prometheus-stack.
+alertmanager:
+  enabled: false
+
+grafana:
+  adminPassword: admin # chỉ dùng local
+  defaultDashboardsTimezone: browser
+
+prometheus:
+  prometheusSpec:
+    retention: 2h
+    # Chọn MỌI ServiceMonitor (không giới hạn theo label release) cho tiện lab.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    resources:
+      requests:
+        cpu: 100m
+        memory: 300Mi
+      limits:
+        memory: 700Mi
+
+# Bớt tải: giữ node-exporter + kube-state-metrics (mặc định bật).
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 20m
+      memory: 24Mi
