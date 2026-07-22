@@ -1,7 +1,40 @@
 # kube-prometheus-stack rút gọn cho lab local (nhẹ RAM).
 # Prometheus tự động chọn ServiceMonitor có label release=kube-prometheus-stack.
 alertmanager:
-  enabled: false
+  enabled: true
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ["alertname", "severity"]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      receiver: "default"
+      routes:
+        # Watchdog (dead-man's switch) -> im lặng.
+        - matchers: ['alertname="Watchdog"']
+          receiver: "null"
+        # SLO critical (burn-rate FastBurn/SlowBurn, Down) -> webhook.
+        # PROD: đổi 'webhook-local' thành receiver Slack/PagerDuty bên dưới.
+        - matchers: ['severity="critical"']
+          receiver: "webhook-local"
+    receivers:
+      - name: "null"
+      - name: "default"
+      - name: "webhook-local"
+        webhook_configs:
+          - url: "http://alert-sink.monitoring.svc.cluster.local:8080/"
+            send_resolved: true
+      # --- PROD mẫu (điền secret rồi trỏ route tới đây) ---
+      # - name: "slack"
+      #   slack_configs:
+      #     - api_url: "<SLACK_WEBHOOK_URL>"
+      #       channel: "#eduvn-alerts"
+      #       title: '{{ .CommonAnnotations.summary }}'
+      # - name: "pagerduty"
+      #   pagerduty_configs:
+      #     - routing_key: "<PD_ROUTING_KEY>"
 
 grafana:
   adminPassword: admin # chỉ dùng local
