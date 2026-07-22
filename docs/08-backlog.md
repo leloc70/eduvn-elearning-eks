@@ -12,8 +12,8 @@ Control/WDAC, rồi `aws sso login --sso-session eduvn`. Sau đó chạy đượ
 - [x] 💻 Serverless backend live · Remote state · Search/filter catalog
 - [ ] 💻 **CI/CD frontend** (`deploy-web.yml` + OIDC role) — code **đã có**; cần: `terraform -chdir=infra-web apply`
       (tạo role) + set vars `AWS_WEB_ROLE_ARN/AWS_WEB_BUCKET/AWS_CF_DIST_ID`. 🔒 (chờ AWS)
-- [ ] 💻 Web features: DELETE/update endpoint (Lambda) · trang chi tiết dùng data thật · phân trang
-- [ ] 💻 Test cho Lambda handler (unit) + đưa vào CI
+- [x] 💻 Web features: **DELETE + PUT (update)** endpoint (Lambda + EKS service) · nút Sửa/Xóa trên trang chi tiết · form dùng lại cho tạo & sửa
+- [x] 💻 **Test cho Lambda** (unit, `node --test`, 13 case) + job CI `Serverless Lambda — test`
 
 ## P1 — CI/CD & bảo mật (code)
 - [ ] 💻 Trivy/Checkov thành **cổng chặn** (required check) khi codebase sạch

@@ -6,6 +6,8 @@ import {
   listCourses,
   getCourse,
   putCourse,
+  updateCourse,
+  deleteCourse,
 } from "./db.js";
 import { metricsMiddleware, metricsHandler } from "./metrics.js";
 
@@ -17,7 +19,7 @@ app.get("/metrics", metricsHandler);
 // CORS: cho phép frontend (origin khác) gọi API.
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", process.env.CORS_ORIGIN || "*");
-  res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
@@ -82,6 +84,44 @@ app.post("/courses", async (req, res, next) => {
     };
     await putCourse(course);
     res.status(201).json(course);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.put("/courses/:id", async (req, res, next) => {
+  try {
+    const { title, instructor, price, description, category, level, durationHours } =
+      req.body || {};
+    if (title !== undefined && !String(title).trim())
+      return res.status(400).json({ error: "'title' rỗng" });
+    if (level !== undefined && !LEVELS.includes(level))
+      return res.status(400).json({ error: `'level' phải là ${LEVELS.join(" / ")}` });
+
+    const fields = {};
+    if (title !== undefined) fields.title = String(title).trim();
+    if (instructor !== undefined) fields.instructor = String(instructor).trim() || "unknown";
+    if (price !== undefined) fields.price = Number(price) || 0;
+    if (description !== undefined) fields.description = String(description);
+    if (category !== undefined) fields.category = String(category).trim() || "General";
+    if (level !== undefined) fields.level = level;
+    if (durationHours !== undefined) fields.durationHours = Number(durationHours) || 0;
+    if (Object.keys(fields).length === 0)
+      return res.status(400).json({ error: "Không có trường nào để cập nhật" });
+
+    const updated = await updateCourse(req.params.id, fields);
+    if (!updated) return res.status(404).json({ error: "Không tìm thấy khóa học" });
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.delete("/courses/:id", async (req, res, next) => {
+  try {
+    const ok = await deleteCourse(req.params.id);
+    if (!ok) return res.status(404).json({ error: "Không tìm thấy khóa học" });
+    res.sendStatus(204);
   } catch (err) {
     next(err);
   }

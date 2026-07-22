@@ -45,6 +45,19 @@ jobs:
       - name: Docker build (no push)
         run: docker build -t course-service:ci .
 
+  serverless:
+    name: Serverless Lambda — test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+      - name: Syntax check
+        run: node --check infra-serverless/lambda/index.mjs && node --check infra-serverless/lambda/validation.mjs
+      - name: Unit tests (validation)
+        run: node --test infra-serverless/lambda-tests/validation.test.mjs
+
   helm:
     name: Helm chart — lint
     runs-on: ubuntu-latest
