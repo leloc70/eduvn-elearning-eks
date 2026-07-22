@@ -341,6 +341,313 @@ kubectl -n eduvn patch networkpolicy course-service --type=json \
 
 ---
 
+# 🚀 Phần nâng cao (Advanced)
+
+> Mỗi mission dưới đây cần cài thêm 1 công cụ. Đánh dấu 🐏 = tốn RAM nhiều (làm chọn lọc, xong thì gỡ).
+> Các lệnh đã được **kiểm chứng trên cluster này** ở những mission ghi ✔️.
+
+## Mission 9 ✔️ — Progressive delivery: Canary với Argo Rollouts (Mandate 03)
+🎯 Phát hành an toàn hơn RollingUpdate: đưa % traffic sang bản mới theo bước, **có cổng người duyệt**,
+tự rollback nếu hỏng.
+
+🛠️
+1. Cài Argo Rollouts controller (+ kubectl plugin).
+2. Triển khai một `Rollout` (canary 25%→50%→100%, pause chờ duyệt) dùng image course-service.
+3. Trigger một bản mới → quan sát **dừng ở 25%** (1 canary + 3 stable) → `promote` → hoàn tất.
+4. (Bonus) `abort` giữa chừng → tự trả về bản stable.
+
+✅ Rollout dừng đúng ở step canary; sau `promote` mới đi tiếp; `abort` khôi phục stable ngay.
+
+<details><summary>💡 Lời giải (đã chạy thật)</summary>
+
+```bash
+# 1. controller + plugin
+kubectl create namespace argo-rollouts
+kubectl apply -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
+# plugin (Linux/mac; Windows tải bản .exe tương ứng và để vào PATH)
+curl -sSLo kubectl-argo-rollouts https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
+chmod +x kubectl-argo-rollouts && sudo mv kubectl-argo-rollouts /usr/local/bin/
+
+# 2. Rollout canary
+kubectl create namespace lab
+kubectl apply -f - <<'YAML'
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata: { name: course-canary, namespace: lab }
+spec:
+  replicas: 4
+  strategy:
+    canary:
+      steps: [ {setWeight: 25}, {pause: {}}, {setWeight: 50}, {pause: {duration: 20}}, {setWeight: 100} ]
+  selector: { matchLabels: { app: course-canary } }
+  template:
+    metadata: { labels: { app: course-canary } }
+    spec:
+      containers:
+      - name: app
+        image: course-service:local
+        imagePullPolicy: IfNotPresent
+        ports: [ { containerPort: 8080 } ]
+        readinessProbe: { httpGet: { path: /readyz, port: 8080 } }
+        resources: { requests: { cpu: 50m, memory: 64Mi }, limits: { memory: 128Mi } }
+        securityContext: { runAsNonRoot: true, runAsUser: 1001, allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+YAML
+
+# 3. trigger bản mới -> dừng ở canary 25%
+kubectl -n lab patch rollout course-canary --type=json \
+  -p='[{"op":"add","path":"/spec/template/spec/containers/0/env","value":[{"name":"VERSION","value":"v2"}]}]'
+kubectl argo rollouts get rollout course-canary -n lab --watch   # thấy Paused, Step 1/5, SetWeight 25
+kubectl argo rollouts promote course-canary -n lab              # đẩy tiếp -> Healthy 5/5
+
+# 4. bonus: abort
+# kubectl argo rollouts abort course-canary -n lab   # trả về stable ngay
+
+# dọn
+kubectl delete ns lab
+```
+Kết quả đã verify: `Paused | Step 1/5 | SetWeight 25` với **1 canary + 3 stable pod**, sau `promote` → `Healthy 5/5`.
+</details>
+
+---
+
+## Mission 10 ✔️ — Kyverno nâng cao: mutate + generate (Mandate 05/01)
+🎯 Không chỉ *chặn* (validate) mà còn *tự sửa* (mutate) và *tự tạo tài nguyên bảo vệ* (generate).
+
+🛠️
+1. **Mutate**: viết policy tự thêm `runAsNonRoot`, `drop: [ALL]` vào mọi pod thiếu — tạo pod trần, xác nhận đã được vá.
+2. **Generate**: viết policy tự tạo một `NetworkPolicy default-deny` cho mỗi namespace mới.
+
+✅ Pod trần sau khi tạo đã có securityContext; namespace mới tự có NetworkPolicy deny-all.
+
+<details><summary>💡 Lời giải (mutate đã chạy thật)</summary>
+
+```bash
+# 1. MUTATE — auto-harden pod ở ns 'lab'
+kubectl apply -f - <<'YAML'
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata: { name: auto-add-securitycontext }
+spec:
+  rules:
+  - name: add-nonroot
+    match: { any: [ { resources: { kinds: [Pod], namespaces: [lab] } } ] }
+    mutate:
+      patchStrategicMerge:
+        spec:
+          securityContext: { runAsNonRoot: true, runAsUser: 1001 }
+          containers:
+          - (name): "*"
+            securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+YAML
+kubectl -n lab run bare --image=nginx:1.27 --restart=Never
+kubectl -n lab get pod bare -o jsonpath='{.spec.securityContext.runAsNonRoot} {.spec.containers[0].securityContext.capabilities.drop}{"\n"}'
+#   -> true ["ALL"]   (Kyverno tự thêm)
+
+# 2. GENERATE — default-deny NetworkPolicy cho mọi namespace mới
+kubectl apply -f - <<'YAML'
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata: { name: default-deny-netpol }
+spec:
+  rules:
+  - name: gen-deny
+    match: { any: [ { resources: { kinds: [Namespace] } } ] }
+    generate:
+      apiVersion: networking.k8s.io/v1
+      kind: NetworkPolicy
+      name: default-deny
+      namespace: "{{request.object.metadata.name}}"
+      synchronize: true
+      data:
+        spec: { podSelector: {}, policyTypes: [Ingress] }
+YAML
+kubectl create ns tenant-x
+kubectl -n tenant-x get networkpolicy default-deny   # tự sinh ra
+
+# dọn
+kubectl delete ns tenant-x; kubectl -n lab delete pod bare
+kubectl delete clusterpolicy auto-add-securitycontext default-deny-netpol
+```
+</details>
+
+---
+
+## Mission 11 ✔️ — Pod Security Admission built-in (Mandate 05)
+🎯 Dùng cơ chế **có sẵn của Kubernetes** (không cần Kyverno) để ép chuẩn bảo mật pod theo namespace.
+
+🛠️
+1. Gán nhãn một namespace mức `restricted` (enforce).
+2. Thử tạo pod nginx thường → bị từ chối; đọc kỹ danh sách vi phạm.
+3. Tạo pod đạt chuẩn restricted → được nhận.
+
+✅ Pod không hardening bị Forbidden với lý do rõ (runAsNonRoot, drop caps, seccomp...).
+
+<details><summary>💡 Lời giải (đã chạy thật)</summary>
+
+```bash
+kubectl create ns psa-test
+kubectl label ns psa-test pod-security.kubernetes.io/enforce=restricted
+kubectl -n psa-test run bad --image=nginx:1.27 --restart=Never   # -> Forbidden, liệt kê vi phạm
+kubectl -n psa-test apply -f - <<'YAML'
+apiVersion: v1
+kind: Pod
+metadata: { name: good }
+spec:
+  securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+  containers:
+  - name: app
+    image: nginx:1.27
+    securityContext: { allowPrivilegeEscalation: false, runAsUser: 1001, capabilities: { drop: [ALL] } }
+YAML
+kubectl delete ns psa-test
+```
+So sánh: PSA = 3 mức chuẩn cố định (privileged/baseline/restricted), gọn; Kyverno = policy tuỳ biến +
+mutate/generate. Thực tế hay **dùng cả hai**.
+</details>
+
+---
+
+## Mission 12 — Chaos drill: pod-killer + SLO giữ vững (Mandate 17/21)
+🎯 Kiểm chứng khả năng tự phục hồi dưới lỗi ngẫu nhiên (SRE game day).
+
+🛠️
+1. Chạy vòng lặp **xóa ngẫu nhiên** 1 pod course-service mỗi ~15s trong vài phút.
+2. Song song, bắn traffic liên tục và đo tỷ lệ lỗi (`/healthz`).
+3. Xác nhận: Deployment luôn kéo pod về đủ replica, PDB giữ ≥1 Ready, error rate ~0.
+4. (Bonus) Cài **Chaos Mesh** để inject lỗi mạng/CPU có kiểm soát.
+
+✅ Không có (hoặc rất ít) request lỗi dù pod bị giết liên tục; `kubectl get deploy` luôn hồi phục.
+
+<details><summary>💡 Lời giải</summary>
+
+```bash
+# 1. pod-killer (terminal A) — chạy ~2 phút
+end=$((SECONDS+120))
+while [ $SECONDS -lt $end ]; do
+  P=$(kubectl -n eduvn get pod -l app.kubernetes.io/name=course-service -o name | shuf -n1)
+  echo "kill $P"; kubectl -n eduvn delete $P --grace-period=5 >/dev/null; sleep 15
+done
+
+# 2. đo lỗi (terminal B)
+kubectl -n eduvn run probe --rm -it --image=curlimages/curl --restart=Never -- \
+  sh -c 'ok=0; err=0; for i in $(seq 1 120); do curl -sf -m2 http://course-service/healthz >/dev/null && ok=$((ok+1)) || err=$((err+1)); sleep 1; done; echo "OK=$ok ERR=$err"'
+#   -> ERR ~0 vì luôn còn pod Ready (PDB) + traffic né pod đang chết (readiness/preStop)
+
+# 4. bonus Chaos Mesh (🐏):
+# helm repo add chaos-mesh https://charts.chaos-mesh.org
+# helm install chaos-mesh chaos-mesh/chaos-mesh -n chaos-mesh --create-namespace
+```
+</details>
+
+---
+
+## Mission 13 🐏 — Log tập trung với Loki + Grafana (Mandate 16/04)
+🎯 Gom log mọi pod về một nơi, truy vấn bằng LogQL trong Grafana (thay vì `kubectl logs` từng pod).
+
+🛠️
+1. Cài **Loki + Promtail** (hoặc Grafana Alloy) vào namespace monitoring.
+2. Trong Grafana, thêm data source Loki, xem log của course-service.
+3. Viết LogQL lọc log lỗi.
+
+✅ Grafana → Explore (Loki) trả log course-service; lọc được theo namespace/pod/level.
+
+<details><summary>💡 Lời giải</summary>
+
+```bash
+helm repo add grafana https://grafana.github.io/helm-charts && helm repo update
+helm upgrade --install loki grafana/loki-stack -n monitoring \
+  --set loki.singleBinary.replicas=1 --set promtail.enabled=true --set grafana.enabled=false
+# Grafana đã có sẵn (kube-prometheus-stack). Thêm data source:
+#   URL: http://loki.monitoring.svc:3100
+kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 3000:80
+```
+LogQL (Explore → Loki):
+```logql
+{namespace="eduvn", pod=~"course-service.*"}                 # tất cả log
+{namespace="eduvn"} |= "error"                                # chỉ dòng có 'error'
+sum(rate({namespace="eduvn"} |= "error" [5m]))                # tần suất lỗi
+```
+Gỡ khi xong: `helm -n monitoring uninstall loki`.
+</details>
+
+---
+
+## Mission 14 🐏 — Right-sizing & tiết kiệm với VPA (Mandate 13/18)
+🎯 Tìm requests/limits "vừa vặn" thay vì đoán — nền tảng để giảm chi phí (Mandate cost).
+
+🛠️
+1. Cài **Vertical Pod Autoscaler** ở chế độ **recommender** (không tự sửa pod → an toàn).
+2. Tạo VPA `updateMode: "Off"` cho course-service, để chạy vài phút.
+3. Đọc khuyến nghị CPU/memory và so với requests hiện tại (100m/128Mi).
+
+✅ `kubectl describe vpa` cho ra Target/Lower/Upper bound → biết nên chỉnh request lên/xuống.
+
+<details><summary>💡 Lời giải</summary>
+
+```bash
+# 1. cài VPA (chỉ recommender)
+git clone https://github.com/kubernetes/autoscaler.git
+./autoscaler/vertical-pod-autoscaler/hack/vpa-up.sh
+
+# 2. VPA recommend-only cho course-service
+kubectl apply -f - <<'YAML'
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata: { name: course-service, namespace: eduvn }
+spec:
+  targetRef: { apiVersion: apps/v1, kind: Deployment, name: course-service }
+  updatePolicy: { updateMode: "Off" }
+YAML
+
+# 3. (chờ ~5 phút, tạo chút traffic) đọc khuyến nghị
+kubectl -n eduvn describe vpa course-service | sed -n '/Recommendation/,/Events/p'
+```
+`Target` là mức request VPA đề xuất; nếu thấp hơn 100m/128Mi hiện tại → có thể hạ để tiết kiệm; cao hơn → tránh throttle/OOM.
+</details>
+
+---
+
+## Mission 15 🐏 — DR: backup & restore cụm với Velero + MinIO (Mandate 20)
+🎯 Bản địa hóa bài **DR restore drill** (vốn làm trên DynamoDB PITR) sang cấp Kubernetes: backup toàn
+bộ manifest một namespace, xóa, rồi khôi phục.
+
+🛠️
+1. Dựng object storage local (**MinIO**) làm đích backup (thay S3).
+2. Cài **Velero** trỏ vào MinIO.
+3. Backup namespace `eduvn` → xóa một tài nguyên → **restore** → xác nhận trở lại.
+
+✅ Sau restore, tài nguyên đã xóa xuất hiện lại; `velero backup describe` = Completed.
+
+<details><summary>💡 Lời giải (khung)</summary>
+
+```bash
+# 1. MinIO (S3 giả) trong cluster
+helm repo add minio https://charts.min.io/ && helm repo update
+helm install minio minio/minio -n velero --create-namespace \
+  --set rootUser=minio,rootPassword=minio123,replicas=1,mode=standalone,buckets[0].name=velero,buckets[0].policy=none
+
+# 2. Velero (dùng plugin aws trỏ MinIO)
+cat > /tmp/creds <<'EOF'
+[default]
+aws_access_key_id=minio
+aws_secret_access_key=minio123
+EOF
+velero install --provider aws --plugins velero/velero-plugin-for-aws:v1.10.0 \
+  --bucket velero --secret-file /tmp/creds --use-volume-snapshots=false \
+  --backup-location-config region=minio,s3ForcePathStyle=true,s3Url=http://minio.velero.svc:9000
+
+# 3. drill
+velero backup create eduvn-bk --include-namespaces eduvn --wait
+kubectl -n eduvn delete pdb course-service            # "mất" 1 tài nguyên
+velero restore create --from-backup eduvn-bk --wait
+kubectl -n eduvn get pdb course-service               # trở lại
+```
+> Đây là bản K8s-level của [`docs/mandates/DR-RESTORE-DRILL.md`](../docs/mandates/DR-RESTORE-DRILL.md).
+> Gỡ khi xong: `velero uninstall`; `helm -n velero uninstall minio`.
+</details>
+
+---
+
 ## Tổng kết kỹ năng luyện được
 | Mission | Kỹ năng DevOps/SRE | Mandate |
 |---|---|---|
@@ -352,5 +659,12 @@ kubectl -n eduvn patch networkpolicy course-service --type=json \
 | 6 | Prometheus/PromQL, SLO, alerting | 07/16 |
 | 7 | Probes, endpoints, least-privilege SA | 17 |
 | 8 | Điều tra sự cố, root-cause, viết postmortem | (all) |
+| **9** | **Canary / progressive delivery (Argo Rollouts)** | 03 |
+| **10** | **Kyverno mutate + generate (policy nâng cao)** | 05/01 |
+| **11** | **Pod Security Admission built-in** | 05 |
+| **12** | **Chaos engineering, game day** | 17/21 |
+| **13** | **Log tập trung (Loki/LogQL)** | 16/04 |
+| **14** | **Right-sizing / cost (VPA)** | 13/18 |
+| **15** | **DR backup/restore cụm (Velero)** | 20 |
 
-> Sau khi xong: `kind delete cluster --name eduvn-local` để giải phóng RAM.
+> Sau khi xong: `kind delete cluster --name eduvn-local` để giải phóng RAM (gỡ cả các add-on 🐏 đã cài).
