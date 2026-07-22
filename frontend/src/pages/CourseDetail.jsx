@@ -1,12 +1,27 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { api, DEMO_COURSES } from "../api.js";
 
 export default function CourseDetail() {
   const { id } = useParams();
+  const nav = useNavigate();
   const [course, setCourse] = useState(null);
   const [err, setErr] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function remove() {
+    setDeleting(true);
+    try {
+      await api.deleteCourse(id);
+      nav("/");
+    } catch {
+      setDeleting(false);
+      setConfirming(false);
+      setErr(true);
+    }
+  }
 
   useEffect(() => {
     let alive = true;
@@ -96,6 +111,30 @@ export default function CourseDetail() {
             </b>
           </div>
           <button className="btn-enroll">Đăng ký học ngay</button>
+
+          {!err && (
+            <div className="panel-manage">
+              {!confirming ? (
+                <>
+                  <Link to={`/course/${id}/edit`} className="btn-ghost">
+                    Chỉnh sửa
+                  </Link>
+                  <button className="btn-danger" onClick={() => setConfirming(true)}>
+                    Xóa
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="btn-danger" onClick={remove} disabled={deleting}>
+                    {deleting ? "Đang xóa…" : "Xác nhận xóa"}
+                  </button>
+                  <button className="btn-ghost" onClick={() => setConfirming(false)} disabled={deleting}>
+                    Hủy
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </motion.aside>
       </div>
     </section>

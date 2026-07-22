@@ -46,6 +46,7 @@ async function req(path, options) {
     ...options,
   });
   if (!res.ok) throw new Error(`API ${res.status}`);
+  if (res.status === 204) return null;
   return res.json();
 }
 
@@ -55,4 +56,7 @@ export const api = {
   getCourse: (id) => req(`/courses/${id}`),
   createCourse: (data) =>
     req("/courses", { method: "POST", body: JSON.stringify(data) }),
+  updateCourse: (id, data) =>
+    req(`/courses/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteCourse: (id) => req(`/courses/${id}`, { method: "DELETE" }),
 };

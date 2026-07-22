@@ -4,6 +4,8 @@ import {
   ScanCommand,
   GetCommand,
   PutCommand,
+  UpdateCommand,
+  DeleteCommand,
 } from "@aws-sdk/lib-dynamodb";
 
 export const TABLE_NAME = process.env.TABLE_NAME || "";
@@ -40,4 +42,58 @@ export async function putCourse(course) {
   }
   await doc.send(new PutCommand({ TableName: TABLE_NAME, Item: course }));
   return course;
+}
+
+// Cập nhật một phần. Trả bản ghi mới, hoặc null nếu id không tồn tại.
+export async function updateCourse(id, fields) {
+  const patch = { ...fields, updatedAt: new Date().toISOString() };
+  if (!TABLE_NAME) {
+    const cur = memory.get(id);
+    if (!cur) return null;
+    const next = { ...cur, ...patch };
+    memory.set(id, next);
+    return next;
+  }
+  const names = {};
+  const values = {};
+  const sets = Object.keys(patch).map((k) => {
+    names[`#${k}`] = k;
+    values[`:${k}`] = patch[k];
+    return `#${k} = :${k}`;
+  });
+  try {
+    const out = await doc.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { id },
+        UpdateExpression: `SET ${sets.join(", ")}`,
+        ConditionExpression: "attribute_exists(id)",
+        ExpressionAttributeNames: names,
+        ExpressionAttributeValues: values,
+        ReturnValues: "ALL_NEW",
+      })
+    );
+    return out.Attributes;
+  } catch (err) {
+    if (err.name === "ConditionalCheckFailedException") return null;
+    throw err;
+  }
+}
+
+// Xóa. Trả true nếu đã xóa, false nếu id không tồn tại.
+export async function deleteCourse(id) {
+  if (!TABLE_NAME) return memory.delete(id);
+  try {
+    await doc.send(
+      new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: { id },
+        ConditionExpression: "attribute_exists(id)",
+      })
+    );
+    return true;
+  } catch (err) {
+    if (err.name === "ConditionalCheckFailedException") return false;
+    throw err;
+  }
 }

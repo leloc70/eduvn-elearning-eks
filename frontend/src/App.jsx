@@ -13,6 +13,7 @@ export default function App() {
           <Route path="/" element={<Catalog />} />
           <Route path="/course/:id" element={<CourseDetail />} />
           <Route path="/new" element={<CreateCourse />} />
+          <Route path="/course/:id/edit" element={<CreateCourse />} />
         </Routes>
       </main>
       <footer className="footer shell">
