@@ -21,8 +21,10 @@ Control/WDAC, rồi `aws sso login --sso-session eduvn`. Sau đó chạy đượ
 - [ ] 💻 Well-Architected Review doc (6 trụ)
 
 ## P2 — Verify mandate P1 (cần cluster)
-- [ ] 🖥️ #10 cosign admission (chặn image chưa ký) · Kyverno Audit→Enforce
-- [ ] 🖥️ #17 automountSA · #18 VPC endpoints · #21 3-AZ (mất 1 AZ dưới tải)
+- [x] 💻 **Lab local (kind)** verify MIỄN PHÍ: Helm chart + hardening · Kyverno Audit→**Enforce**
+      (chặn pod root) · NetworkPolicy (Calico enforce) · Prometheus scrape · ArgoCD GitOps · HPA/PDB/topologySpread.
+      Xem [`docs/10-local-lab-verification.md`](10-local-lab-verification.md) · [`local-lab/`](../local-lab/).
+- [ ] 🖥️ Chỉ còn cần AWS thật: #10 cosign verify-images (ECR+ký) · #18 VPC endpoints · #21 3-AZ (mất 1 AZ dưới tải) · IRSA · Karpenter
 - [ ] 🖥️ Bài thủ công: flash-sale load test (#2) · drain/AZ-failover (#3/#21)
 > Code đã sẵn (B). Chi tiết: [`mandates/APPLY-PLAN.md`](mandates/APPLY-PLAN.md) + ADR-0008/0009.
 
