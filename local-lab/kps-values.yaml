@@ -14,7 +14,8 @@ grafana:
 
 prometheus:
   prometheusSpec:
-    retention: 2h
+    # 3d để cửa sổ burn-rate dài (6h/1d/3d) có dữ liệu (xem course-service PrometheusRule).
+    retention: 3d
     # Chọn MỌI ServiceMonitor (không giới hạn theo label release) cho tiện lab.
     serviceMonitorSelectorNilUsesHelmValues: false
     resources:
