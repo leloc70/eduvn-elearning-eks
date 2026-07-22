@@ -6,6 +6,11 @@ alertmanager:
 grafana:
   adminPassword: admin # chỉ dùng local
   defaultDashboardsTimezone: browser
+  # Sidecar quét ConfigMap dashboard ở MỌI namespace (để nhận dashboard do chart course-service tạo ở ns eduvn).
+  sidecar:
+    dashboards:
+      enabled: true
+      searchNamespace: ALL
 
 prometheus:
   prometheusSpec:

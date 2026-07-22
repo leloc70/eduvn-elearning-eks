@@ -1,0 +1,42 @@
+{{- if .Values.prometheusRule.enabled }}
+# Alert SLO cho course-service. Prometheus (kube-prometheus-stack) chọn rule qua label release=<...>.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "course-service.name" . }}
+  labels:
+    {{- include "course-service.labels" . | nindent 4 }}
+    release: {{ .Values.serviceMonitor.releaseLabel }}
+spec:
+  groups:
+    - name: course-service.slo
+      rules:
+        - alert: CourseServiceDown
+          expr: sum(up{service="course-service"}) == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "course-service không có target Prometheus nào up"
+            description: "Mọi endpoint /metrics đều down > 2 phút — kiểm tra pod/NetworkPolicy."
+        - alert: CourseServiceHighErrorRate
+          expr: |
+            sum(rate(http_request_duration_seconds_count{service="course-service",status=~"5.."}[5m]))
+              / sum(rate(http_request_duration_seconds_count{service="course-service"}[5m])) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "course-service error rate > 5% (5m)"
+            description: "Tỷ lệ 5xx vượt 5% trong 5 phút."
+        - alert: CourseServiceHighLatencyP95
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(http_request_duration_seconds_bucket{service="course-service"}[5m])) by (le)) > 0.5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "course-service p95 latency > 500ms (5m)"
+            description: "Độ trễ p95 vượt ngưỡng SLO 500ms trong 5 phút."
+{{- end }}
