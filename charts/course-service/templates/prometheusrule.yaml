@@ -13,19 +13,21 @@ spec:
   groups:
     # 1) SLI — tỷ lệ lỗi (5xx / tổng) theo nhiều cửa sổ, dùng cho burn-rate.
     - name: course-service.slo.sli
+      # `or vector(0)`: khi CHƯA có 5xx nào, tử số rỗng -> ép về 0 để SLI = 0 (không phải "no data").
+      # Không traffic thì mẫu số rỗng -> kết quả rỗng (đúng: không cảnh báo khi im ắng).
       rules:
         - record: course_service:sli_error:ratio_rate5m
-          expr: sum(rate(http_request_duration_seconds_count{service="course-service",status=~"5.."}[5m])) / sum(rate(http_request_duration_seconds_count{service="course-service"}[5m]))
+          expr: (sum(rate(http_request_duration_seconds_count{service="course-service",status=~"5.."}[5m])) or vector(0)) / sum(rate(http_request_duration_seconds_count{service="course-service"}[5m]))
         - record: course_service:sli_error:ratio_rate30m
-          expr: sum(rate(http_request_duration_seconds_count{service="course-service",status=~"5.."}[30m])) / sum(rate(http_request_duration_seconds_count{service="course-service"}[30m]))
+          expr: (sum(rate(http_request_duration_seconds_count{service="course-service",status=~"5.."}[30m])) or vector(0)) / sum(rate(http_request_duration_seconds_count{service="course-service"}[30m]))
         - record: course_service:sli_error:ratio_rate1h
-          expr: sum(rate(http_request_duration_seconds_count{service="course-service",status=~"5.."}[1h])) / sum(rate(http_request_duration_seconds_count{service="course-service"}[1h]))
+          expr: (sum(rate(http_request_duration_seconds_count{service="course-service",status=~"5.."}[1h])) or vector(0)) / sum(rate(http_request_duration_seconds_count{service="course-service"}[1h]))
         - record: course_service:sli_error:ratio_rate6h
-          expr: sum(rate(http_request_duration_seconds_count{service="course-service",status=~"5.."}[6h])) / sum(rate(http_request_duration_seconds_count{service="course-service"}[6h]))
+          expr: (sum(rate(http_request_duration_seconds_count{service="course-service",status=~"5.."}[6h])) or vector(0)) / sum(rate(http_request_duration_seconds_count{service="course-service"}[6h]))
         - record: course_service:sli_error:ratio_rate1d
-          expr: sum(rate(http_request_duration_seconds_count{service="course-service",status=~"5.."}[1d])) / sum(rate(http_request_duration_seconds_count{service="course-service"}[1d]))
+          expr: (sum(rate(http_request_duration_seconds_count{service="course-service",status=~"5.."}[1d])) or vector(0)) / sum(rate(http_request_duration_seconds_count{service="course-service"}[1d]))
         - record: course_service:sli_error:ratio_rate3d
-          expr: sum(rate(http_request_duration_seconds_count{service="course-service",status=~"5.."}[3d])) / sum(rate(http_request_duration_seconds_count{service="course-service"}[3d]))
+          expr: (sum(rate(http_request_duration_seconds_count{service="course-service",status=~"5.."}[3d])) or vector(0)) / sum(rate(http_request_duration_seconds_count{service="course-service"}[3d]))
 
     # 2) Burn-rate alerts — cảnh báo theo TỐC ĐỘ đốt error budget (99.9% -> ngưỡng = burn * 0.001).
     #    Yêu cầu cả cửa sổ dài LẪN ngắn vượt ngưỡng -> ít false-positive, tự tắt khi đã hồi phục.
