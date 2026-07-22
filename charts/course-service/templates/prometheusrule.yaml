@@ -1,5 +1,7 @@
 {{- if .Values.prometheusRule.enabled }}
-# Alert SLO cho course-service. Prometheus (kube-prometheus-stack) chọn rule qua label release=<...>.
+# SLO cho course-service: recording rules (SLI) + multi-window burn-rate alerts (chuẩn Google SRE).
+# SLO khả dụng: {{ .Values.slo.availabilityTarget }} (error budget {{ .Values.slo.errorBudget }}) / {{ .Values.slo.window }}.
+# Prometheus (kube-prometheus-stack) chọn rule qua label release=<...>.
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
@@ -9,7 +11,56 @@ metadata:
     release: {{ .Values.serviceMonitor.releaseLabel }}
 spec:
   groups:
-    - name: course-service.slo
+    # 1) SLI — tỷ lệ lỗi (5xx / tổng) theo nhiều cửa sổ, dùng cho burn-rate.
+    - name: course-service.slo.sli
+      rules:
+        - record: course_service:sli_error:ratio_rate5m
+          expr: sum(rate(http_request_duration_seconds_count{service="course-service",status=~"5.."}[5m])) / sum(rate(http_request_duration_seconds_count{service="course-service"}[5m]))
+        - record: course_service:sli_error:ratio_rate30m
+          expr: sum(rate(http_request_duration_seconds_count{service="course-service",status=~"5.."}[30m])) / sum(rate(http_request_duration_seconds_count{service="course-service"}[30m]))
+        - record: course_service:sli_error:ratio_rate1h
+          expr: sum(rate(http_request_duration_seconds_count{service="course-service",status=~"5.."}[1h])) / sum(rate(http_request_duration_seconds_count{service="course-service"}[1h]))
+        - record: course_service:sli_error:ratio_rate6h
+          expr: sum(rate(http_request_duration_seconds_count{service="course-service",status=~"5.."}[6h])) / sum(rate(http_request_duration_seconds_count{service="course-service"}[6h]))
+        - record: course_service:sli_error:ratio_rate1d
+          expr: sum(rate(http_request_duration_seconds_count{service="course-service",status=~"5.."}[1d])) / sum(rate(http_request_duration_seconds_count{service="course-service"}[1d]))
+        - record: course_service:sli_error:ratio_rate3d
+          expr: sum(rate(http_request_duration_seconds_count{service="course-service",status=~"5.."}[3d])) / sum(rate(http_request_duration_seconds_count{service="course-service"}[3d]))
+
+    # 2) Burn-rate alerts — cảnh báo theo TỐC ĐỘ đốt error budget (99.9% -> ngưỡng = burn * 0.001).
+    #    Yêu cầu cả cửa sổ dài LẪN ngắn vượt ngưỡng -> ít false-positive, tự tắt khi đã hồi phục.
+    - name: course-service.slo.burnrate
+      rules:
+        - alert: CourseServiceErrorBudgetFastBurn
+          # 14.4x: đốt ~2% budget trong 1h -> PAGE ngay.
+          expr: course_service:sli_error:ratio_rate1h > (14.4 * 0.001) and course_service:sli_error:ratio_rate5m > (14.4 * 0.001)
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "course-service đốt error budget rất nhanh (14.4x)"
+            description: "~2% budget/1h. Còn ~35 phút là cạn budget tháng — điều tra ngay."
+        - alert: CourseServiceErrorBudgetSlowBurn
+          # 6x: đốt ~5% budget trong 6h -> PAGE.
+          expr: course_service:sli_error:ratio_rate6h > (6 * 0.001) and course_service:sli_error:ratio_rate30m > (6 * 0.001)
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "course-service đốt error budget nhanh (6x)"
+            description: "~5% budget/6h. Xu hướng vi phạm SLO nếu không xử lý."
+        - alert: CourseServiceErrorBudgetTicket
+          # 1x: đốt ~10% budget trong 3 ngày -> tạo TICKET (âm ỉ).
+          expr: course_service:sli_error:ratio_rate3d > (1 * 0.001) and course_service:sli_error:ratio_rate6h > (1 * 0.001)
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "course-service rò rỉ error budget chậm (1x)"
+            description: "~10% budget/3 ngày. Không khẩn nhưng cần lên lịch xử lý."
+
+    # 3) Alert triệu chứng bổ trợ (không phải SLO nhưng hữu ích cho on-call).
+    - name: course-service.symptoms
       rules:
         - alert: CourseServiceDown
           expr: sum(up{service="course-service"}) == 0
@@ -19,24 +70,12 @@ spec:
           annotations:
             summary: "course-service không có target Prometheus nào up"
             description: "Mọi endpoint /metrics đều down > 2 phút — kiểm tra pod/NetworkPolicy."
-        - alert: CourseServiceHighErrorRate
-          expr: |
-            sum(rate(http_request_duration_seconds_count{service="course-service",status=~"5.."}[5m]))
-              / sum(rate(http_request_duration_seconds_count{service="course-service"}[5m])) > 0.05
-          for: 5m
-          labels:
-            severity: warning
-          annotations:
-            summary: "course-service error rate > 5% (5m)"
-            description: "Tỷ lệ 5xx vượt 5% trong 5 phút."
         - alert: CourseServiceHighLatencyP95
-          expr: |
-            histogram_quantile(0.95,
-              sum(rate(http_request_duration_seconds_bucket{service="course-service"}[5m])) by (le)) > 0.5
+          expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service="course-service"}[5m])) by (le)) > {{ .Values.slo.latencyThresholdSeconds }}
           for: 5m
           labels:
             severity: warning
           annotations:
-            summary: "course-service p95 latency > 500ms (5m)"
-            description: "Độ trễ p95 vượt ngưỡng SLO 500ms trong 5 phút."
+            summary: "course-service p95 latency > {{ .Values.slo.latencyThresholdSeconds }}s (5m)"
+            description: "Vượt ngưỡng latency SLO trong 5 phút."
 {{- end }}

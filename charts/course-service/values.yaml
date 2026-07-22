@@ -100,7 +100,14 @@ serviceMonitor:
   releaseLabel: kube-prometheus-stack
   interval: 15s
 
-# Alert SLO (PrometheusRule) — burn khi error rate / p95 vượt ngưỡng, hoặc service down.
+# Mục tiêu SLO (tham chiếu cho PrometheusRule + tài liệu docs/12-slo-sla.md).
+slo:
+  availabilityTarget: "99.9%" # request non-5xx / 30 ngày
+  errorBudget: "0.1%" # = 100% − target → ~43 phút/tháng
+  window: "30 ngày"
+  latencyThresholdSeconds: 0.3 # p95 SLO: 95% request < 300ms
+
+# Alert SLO (PrometheusRule): recording rules SLI + multi-window burn-rate + triệu chứng.
 prometheusRule:
   enabled: true
 
