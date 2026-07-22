@@ -66,10 +66,26 @@ kubectl -n monitoring port-forward svc/kube-prometheus-stack-prometheus 9090:909
 | DR | DynamoDB PITR + restore drill | ✅ ([DR drill](mandates/DR-RESTORE-DRILL.md)) |
 | Quy trình | error-budget policy, runbook, postmortem | ✅ ([runbook](07-runbook-p1.md)) |
 
-## 7. Còn thiếu / việc tiếp
+## 7. Định tuyến cảnh báo (Alertmanager)
+Burn-rate `severity=critical` (FastBurn/SlowBurn/Down) → Alertmanager → **kênh nhận**.
+Cấu hình: [`local-lab/kps-values.yaml`](../local-lab/kps-values.yaml) (`alertmanager.config`).
+
+| Môi trường | Receiver |
+|---|---|
+| Local (lab) | webhook → `alert-sink` ([`local-lab/alert-sink.yaml`](../local-lab/alert-sink.yaml)) — chứng minh pipe |
+| Production | Slack (`#eduvn-alerts`) + PagerDuty (mẫu comment sẵn trong kps-values) |
+
+Đã verify: alert `severity=critical` chạy tới webhook (`receiver: webhook-local`, `status: firing`).
+Watchdog (dead-man's switch) route tới `null`. Xem:
+```bash
+kubectl -n monitoring port-forward svc/kube-prometheus-stack-alertmanager 9093:9093   # UI
+kubectl -n monitoring logs deploy/alert-sink                                           # payload nhận được
+```
+
+## 8. Còn thiếu / việc tiếp
 - **Soak + spike test** (rò rỉ, tải nhảy vọt) — bổ sung bộ load test.
 - **Đo lại SLI với DynamoDB thật** (RCU) khi có AWS — trần thông lượng thật.
 - **Báo cáo SLA hàng tháng** tự động từ recording rules (uptime %).
-- **Alertmanager route** burn-rate critical → PagerDuty/Slack (hiện mới có rule, chưa nối kênh).
+- **Nối Slack/PagerDuty thật** (điền webhook/routing key vào receiver mẫu).
 
 > Ngưỡng burn-rate tính cho SLO 99.9% (1−SLO = 0.001). Đổi SLO thì cập nhật cả ngưỡng trong PrometheusRule.
