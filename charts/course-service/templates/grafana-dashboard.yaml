@@ -1,0 +1,14 @@
+{{- if .Values.grafanaDashboard.enabled }}
+# Dashboard SLO nạp vào Grafana qua sidecar (ConfigMap có label grafana_dashboard=1).
+# JSON để ở file riêng + .Files.Get để Helm không parse nhầm legend "{{`{{`}}label{{`}}`}}" của Grafana.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "course-service.name" . }}-dashboard
+  labels:
+    {{- include "course-service.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  course-service-slo.json: |
+{{ .Files.Get "dashboards/course-service-slo.json" | indent 4 }}
+{{- end }}

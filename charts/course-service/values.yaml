@@ -99,3 +99,11 @@ serviceMonitor:
   enabled: true
   releaseLabel: kube-prometheus-stack
   interval: 15s
+
+# Alert SLO (PrometheusRule) — burn khi error rate / p95 vượt ngưỡng, hoặc service down.
+prometheusRule:
+  enabled: true
+
+# Dashboard SLO nạp vào Grafana qua sidecar ConfigMap.
+grafanaDashboard:
+  enabled: true
