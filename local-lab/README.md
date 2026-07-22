@@ -6,6 +6,11 @@ Prometheus/Grafana, ArgoCD, NetworkPolicy, HPA, PDB** — miễn phí, không đ
 > 🧪 **Muốn thực hành như một DevOps K8s?** Sau khi dựng xong, làm bộ bài tập theo mandate ở
 > [`LABS.md`](LABS.md): rollout không downtime, drain+PDB, HPA dưới tải, NetworkPolicy, Kyverno
 > Audit→Enforce, PromQL/SLO, điều tra sự cố.
+>
+> 🌐 **Full-stack local**: `bash local-lab/fullstack-up.sh` — chạy frontend React trỏ vào
+> course-service trong kind (port-forward), mở `http://localhost:5173`.
+>
+> 🔥 **Load test**: xem [`../docs/11-load-test.md`](../docs/11-load-test.md) (k6 → 14.5k RPS, HPA 2→10 pod).
 
 ## Test được / không test được
 
