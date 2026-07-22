@@ -16,6 +16,8 @@ const TICKER = [
 export default function Catalog() {
   const [courses, setCourses] = useState(null);
   const [demo, setDemo] = useState(false);
+  const [query, setQuery] = useState("");
+  const [cat, setCat] = useState("Tất cả");
 
   useEffect(() => {
     let alive = true;
@@ -35,6 +37,21 @@ export default function Catalog() {
       alive = false;
     };
   }, []);
+
+  // Lọc client-side theo từ khóa + danh mục.
+  const categories = courses
+    ? ["Tất cả", ...new Set(courses.map((c) => c.category || "General"))]
+    : ["Tất cả"];
+  const filtered = (courses || []).filter((c) => {
+    const okCat = cat === "Tất cả" || (c.category || "General") === cat;
+    const q = query.trim().toLowerCase();
+    const okQ =
+      !q ||
+      [c.title, c.instructor, c.description]
+        .filter(Boolean)
+        .some((f) => f.toLowerCase().includes(q));
+    return okCat && okQ;
+  });
 
   return (
     <>
@@ -90,9 +107,32 @@ export default function Catalog() {
         <div className="sec-head">
           <h2>Danh mục khóa học</h2>
           <span className="count">
-            {courses ? `${courses.length} khóa · cập nhật 2026` : "đang tải…"}
+            {courses ? `${filtered.length}/${courses.length} khóa` : "đang tải…"}
           </span>
         </div>
+
+        {courses && (
+          <div className="catalog-tools">
+            <input
+              className="search"
+              type="search"
+              placeholder="Tìm khóa học, giảng viên…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <div className="cat-chips">
+              {categories.map((c) => (
+                <button
+                  key={c}
+                  className={"chip" + (c === cat ? " active" : "")}
+                  onClick={() => setCat(c)}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {demo && (
           <div className="banner">
@@ -107,14 +147,18 @@ export default function Catalog() {
               <div className="skeleton" key={i} />
             ))}
           </div>
-        ) : courses.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="empty">
-            <h3>Chưa có khóa học nào</h3>
-            <p>Hãy là người đầu tiên tạo một khóa học.</p>
+            <h3>{courses.length === 0 ? "Chưa có khóa học nào" : "Không tìm thấy"}</h3>
+            <p>
+              {courses.length === 0
+                ? "Hãy là người đầu tiên tạo một khóa học."
+                : "Thử từ khóa khác hoặc chọn danh mục “Tất cả”."}
+            </p>
           </div>
         ) : (
           <div className="grid">
-            {courses.map((c, i) => (
+            {filtered.map((c, i) => (
               <CourseCard course={c} index={i} key={c.id} />
             ))}
           </div>
