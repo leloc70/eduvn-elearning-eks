@@ -1,5 +1,4 @@
 # ArgoCD Application: GitOps sync course-service từ git (dùng values-local.yaml).
-# targetRevision trỏ branch chứa lab; đổi sang "main" sau khi merge.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -9,7 +8,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/leloc70/eduvn-elearning-eks.git
-    targetRevision: chore/local-lab
+    targetRevision: main
     path: charts/course-service
     helm:
       valueFiles:
