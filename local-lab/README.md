@@ -3,6 +3,10 @@
 Dựng lại phần lớn stack EKS trên máy local bằng **kind** để test **Helm chart, Kyverno,
 Prometheus/Grafana, ArgoCD, NetworkPolicy, HPA, PDB** — miễn phí, không đụng AWS.
 
+> 🧪 **Muốn thực hành như một DevOps K8s?** Sau khi dựng xong, làm bộ bài tập theo mandate ở
+> [`LABS.md`](LABS.md): rollout không downtime, drain+PDB, HPA dưới tải, NetworkPolicy, Kyverno
+> Audit→Enforce, PromQL/SLO, điều tra sự cố.
+
 ## Test được / không test được
 
 | Thành phần | Local? | Ghi chú |
