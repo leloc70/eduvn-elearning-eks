@@ -1,0 +1,30 @@
+# Cluster kind 3 node (1 control-plane + 2 worker) để demo PDB / topologySpread / drain.
+# Tắt CNI mặc định (kindnet) để cài Calico -> NetworkPolicy được enforce thật.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: eduvn-local
+networking:
+  disableDefaultCNI: true
+  podSubnet: "10.244.0.0/16"
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "topology.kubernetes.io/zone=local-a"
+  - role: worker
+    kubeadmConfigPatches:
+      - |
+        kind: JoinConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "topology.kubernetes.io/zone=local-a"
+  - role: worker
+    kubeadmConfigPatches:
+      - |
+        kind: JoinConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "topology.kubernetes.io/zone=local-b"

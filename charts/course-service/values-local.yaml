@@ -1,0 +1,32 @@
+# Override cho lab local (kind). Bỏ những thứ neo vào AWS, giữ nguyên phần
+# hardening/observability để test được thật. Xem local-lab/README.md.
+image:
+  repository: course-service
+  tag: local
+  pullPolicy: IfNotPresent # image được `kind load` vào node, không pull registry
+
+# Không có IRSA ở local -> bỏ annotation IAM role (giữ SA để test automountSAToken=false).
+serviceAccount:
+  create: true
+  name: course-service
+  annotations: {}
+
+# Không có ALB Controller ở local -> tắt Ingress, dùng port-forward.
+ingress:
+  enabled: false
+
+# Không có DynamoDB -> để env rỗng, course-service tự chạy in-memory (xem services/course-service/src/db.js).
+env: []
+
+# NetworkPolicy vẫn bật (Calico enforce). Cho phép pod-network của kind (mặc định
+# 10.244.0.0/16) để Prometheus scrape /metrics + test client trong cluster gọi được.
+networkPolicy:
+  enabled: true
+  ingressCIDRs:
+    - 10.244.0.0/16
+
+# Khớp release name của kube-prometheus-stack cài ở lab (xem README).
+serviceMonitor:
+  enabled: true
+  releaseLabel: kube-prometheus-stack
+  interval: 15s
