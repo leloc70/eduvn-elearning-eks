@@ -329,6 +329,60 @@ button {
   color: var(--ink-faint);
 }
 
+/* ---------- Catalog tools (search + filter) ---------- */
+.catalog-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.8rem;
+}
+.search {
+  flex: 1 1 240px;
+  max-width: 340px;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid var(--line-strong);
+  padding: 0.6rem 0.2rem;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--ink);
+  transition: border-color 0.25s;
+}
+.search::placeholder {
+  color: var(--ink-faint);
+}
+.search:focus {
+  outline: none;
+  border-color: var(--vermilion);
+}
+.cat-chips {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.chip {
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  color: var(--ink-soft);
+  padding: 0.35rem 0.9rem;
+  border-radius: 100px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  transition: all 0.25s var(--ease);
+}
+.chip:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+.chip.active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
 /* ---------- Course grid ---------- */
 .grid {
   display: grid;
