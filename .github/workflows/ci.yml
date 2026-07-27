@@ -16,7 +16,7 @@ jobs:
       run:
         working-directory: services/course-service
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v5
         with:
@@ -49,7 +49,7 @@ jobs:
     name: Serverless Lambda — test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with:
           node-version: "20"
@@ -62,7 +62,7 @@ jobs:
     name: Helm chart — lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: azure/setup-helm@v5
       - name: Helm lint
         run: helm lint charts/course-service
@@ -74,7 +74,7 @@ jobs:
       run:
         working-directory: infra
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: hashicorp/setup-terraform@v4
       - name: Format check
         run: terraform fmt -check -recursive
